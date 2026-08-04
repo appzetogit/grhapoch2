@@ -1077,7 +1077,7 @@ export default function Cart() {
                     : `Save ${RUPEE_SYMBOL}${Math.max(0, (coupon.originalPrice || 0) - (coupon.discountedPrice || 0))} with '${coupon.couponCode}'`,
                   originalPrice: coupon.originalPrice,
                   discountedPrice: coupon.discountedPrice,
-                  customerGroup: coupon.customerGroup || "all",
+                  customerGroup: coupon.customerScope === "first-time" || coupon.customerGroup === "new" ? "new" : "all",
                   isGlobalCoupon: Boolean(coupon.isGlobalCoupon),
                   itemId: couponItemId,
                   itemName: cartItem.name,
@@ -1271,7 +1271,7 @@ export default function Cart() {
   useEffect(() => {
     const fetchOrderCount = async () => {
       try {
-        const response = await userAPI.getOrders({ page: 1, limit: 1 })
+        const response = await orderAPI.getOrders({ page: 1, limit: 1 })
         if (response?.data?.success) {
           const totalOrders = response?.data?.data?.pagination?.total || 0
           setUserOrderCount(totalOrders)
@@ -2615,8 +2615,10 @@ export default function Cart() {
                             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-tight mb-0.5">
                               {availableCoupons[0].discountDisplay || `Save ${RUPEE_SYMBOL}${availableCoupons[0].discount}`} with '{availableCoupons[0].code}'
                             </p>
-                            {availableCoupons[0].customerGroup === "new" ? (
-                              <p className="text-[11px] text-[#EB590E] mb-1">First-time users only</p>
+                            {availableCoupons[0].customerGroup === "new" && userOrderCount > 0 ? (
+                              <p className="text-[11px] text-red-500 font-semibold mb-1">Not applicable: Valid on first order only</p>
+                            ) : availableCoupons[0].customerGroup === "new" ? (
+                              <p className="text-[11px] text-green-600 font-semibold mb-1">Valid on your first order</p>
                             ) : subtotal < availableCoupons[0].minOrder ? (
                               <p className="text-xs text-blue-600 font-medium mb-1">Add items worth {RUPEE_SYMBOL}{(availableCoupons[0].minOrder - subtotal).toFixed(0)} more to unlock</p>
                             ) : null}
@@ -2629,7 +2631,11 @@ export default function Cart() {
                           </div>
                         </div>
                         <button
-                          className="border border-[#EB590E] text-[#EB590E] dark:hover:bg-[#EB590E]/10 rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed ml-2 shadow-sm"
+                          className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ml-2 shadow-sm transition-all ${
+                            (subtotal < availableCoupons[0].minOrder || (availableCoupons[0].customerGroup === "new" && userOrderCount > 0))
+                              ? "bg-slate-100 text-slate-400 border border-slate-200 dark:bg-gray-800 dark:text-gray-600 dark:border-gray-700 cursor-not-allowed"
+                              : "border border-[#EB590E] text-[#EB590E] dark:hover:bg-[#EB590E]/10 hover:bg-orange-50"
+                          }`}
                           onClick={() => handleApplyCoupon(availableCoupons[0])}
                           disabled={subtotal < availableCoupons[0].minOrder || (availableCoupons[0].customerGroup === "new" && userOrderCount > 0)}
                         >
@@ -2670,8 +2676,10 @@ export default function Cart() {
                                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-tight mb-0.5">
                                   {coupon.discountDisplay || `Save ${RUPEE_SYMBOL}${coupon.discount}`} with '{coupon.code}'
                                 </p>
-                                {coupon.customerGroup === "new" ? (
-                                  <p className="text-[11px] text-[#EB590E] mb-1">First-time users only</p>
+                                {coupon.customerGroup === "new" && userOrderCount > 0 ? (
+                                  <p className="text-[11px] text-red-500 font-semibold mb-1">Not applicable: Valid on first order only</p>
+                                ) : coupon.customerGroup === "new" ? (
+                                  <p className="text-[11px] text-green-600 font-semibold mb-1">Valid on your first order</p>
                                 ) : subtotal < coupon.minOrder ? (
                                   <p className="text-xs text-blue-600 font-medium mb-1 line-clamp-1">Add items worth {RUPEE_SYMBOL}{(coupon.minOrder - subtotal).toFixed(0)} more to unlock</p>
                                 ) : (
@@ -2680,7 +2688,11 @@ export default function Cart() {
                               </div>
                             </div>
                             <button
-                              className="border border-[#EB590E] text-[#EB590E] dark:hover:bg-[#EB590E]/10 rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed ml-2 shadow-sm"
+                              className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ml-2 shadow-sm transition-all ${
+                                (subtotal < coupon.minOrder || (coupon.customerGroup === "new" && userOrderCount > 0))
+                                  ? "bg-slate-100 text-slate-400 border border-slate-200 dark:bg-gray-800 dark:text-gray-600 dark:border-gray-700 cursor-not-allowed"
+                                  : "border border-[#EB590E] text-[#EB590E] dark:hover:bg-[#EB590E]/10 hover:bg-orange-50"
+                              }`}
                               onClick={() => handleApplyCoupon(coupon)}
                               disabled={subtotal < coupon.minOrder || (coupon.customerGroup === "new" && userOrderCount > 0)}
                             >
