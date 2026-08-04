@@ -452,6 +452,36 @@ function normalizeLookupId(value) {
   return raw
 }
 
+function formatOrderId(orderId, mongoId) {
+  const idStr = String(orderId || "").trim();
+  const mIdStr = String(mongoId || "").trim();
+  const primaryId = idStr || mIdStr;
+  
+  if (!primaryId) return "FOD-ORDER";
+  
+  if (primaryId.startsWith("FOD-")) {
+    const hexPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(hexPart)) {
+      return `FOD-${hexPart.slice(-6).toUpperCase()}`;
+    }
+    return primaryId;
+  }
+  
+  if (primaryId.startsWith("ORD-")) {
+    const ordPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(ordPart)) {
+      return `FOD-${ordPart.slice(-6).toUpperCase()}`;
+    }
+    return `FOD-${ordPart}`;
+  }
+  
+  if (/^[a-f0-9]{24}$/i.test(primaryId)) {
+    return `FOD-${primaryId.slice(-6).toUpperCase()}`;
+  }
+  
+  return primaryId.length > 15 ? `FOD-${primaryId.slice(-6).toUpperCase()}` : `FOD-${primaryId}`;
+}
+
 export default function OrderTracking() {
   const companyName = useCompanyName()
   const { orderId } = useParams()
@@ -1389,7 +1419,7 @@ export default function OrderTracking() {
           </Link>
           <div>
             <h1 className="text-lg font-bold text-gray-800 dark:text-white">Track Order</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Order #{orderId?.slice(-6).toUpperCase()}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Order #{formatOrderId(order?.orderId || order?.order_id || order?.id, orderId)}</p>
           </div>
         </div>
         <div className="w-10" /> {/* Spacer to keep title centered if needed, or just empty */}

@@ -109,7 +109,7 @@ export const ActionSlider = ({
           isSuccess ? 'bg-white text-green-600' : 'bg-white text-gray-950'
         }`}
       >
-        <ChevronRight className={`w-8 h-8 transition-transform duration-300 ${isSuccess ? 'scale-110' : ''}`} />
+        {!isSuccess && <ChevronRight className={`w-8 h-8 transition-transform duration-300`} />}
       </motion.div>
     </div>
   );

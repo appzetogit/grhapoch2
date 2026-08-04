@@ -162,6 +162,13 @@ export default function OrderInvoice() {
     handlePrint()
   }
 
+  const pricingObj = order.pricing || {}
+  const subtotal = order.subtotal ?? pricingObj.subtotal ?? pricingObj.itemTotal ?? 0
+  const deliveryFee = order.deliveryFee ?? pricingObj.deliveryFee ?? 0
+  const platformFee = order.platformFee ?? pricingObj.platformFee ?? 0
+  const tax = order.tax ?? pricingObj.tax ?? pricingObj.taxesAndCharges ?? 0
+  const total = order.total ?? pricingObj.total ?? 0
+
   return (
     <AnimatedPage className="min-h-screen bg-gradient-to-b from-yellow-50/30 via-white to-orange-50/20 dark:from-[#0a0a0a] dark:via-[#1a1a1a] dark:to-[#0a0a0a] p-3 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
@@ -268,14 +275,14 @@ export default function OrderInvoice() {
                                   <span className="text-xs text-gray-500">{item.variantName}</span>
                                 ) : null}
                                 <span className="text-muted-foreground sm:hidden text-xs">
-                                  Qty: {item.quantity} � ${item.price.toFixed(2)}
+                                  Qty: {item.quantity} • Rs. {item.price.toFixed(2)}
                                 </span>
                               </div>
                             </div>
                           </td>
                           <td className="px-2 sm:px-3 py-2 sm:py-3 text-center hidden sm:table-cell">{item.quantity}</td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-right hidden md:table-cell">${item.price.toFixed(2)}</td>
-                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium">${(item.price * item.quantity).toFixed(2)}</td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-right hidden md:table-cell">Rs. {item.price.toFixed(2)}</td>
+                          <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-medium">Rs. {(item.price * item.quantity).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -287,19 +294,27 @@ export default function OrderInvoice() {
               <div className="total-section mt-4 sm:mt-6">
                 <div className="total-row flex justify-between text-xs sm:text-sm sm:text-base py-1 sm:py-2">
                   <span>Subtotal:</span>
-                  <span>${order.subtotal.toFixed(2)}</span>
+                  <span>Rs. {Number(subtotal).toFixed(2)}</span>
                 </div>
                 <div className="total-row flex justify-between text-xs sm:text-sm sm:text-base py-1 sm:py-2">
                   <span>Delivery Fee:</span>
-                  <span>${order.deliveryFee.toFixed(2)}</span>
+                  <span>{deliveryFee === 0 ? "Free" : `Rs. ${Number(deliveryFee).toFixed(2)}`}</span>
                 </div>
-                <div className="total-row flex justify-between text-xs sm:text-sm sm:text-base py-1 sm:py-2">
-                  <span>Tax:</span>
-                  <span>${order.tax.toFixed(2)}</span>
-                </div>
+                {platformFee > 0 && (
+                  <div className="total-row flex justify-between text-xs sm:text-sm sm:text-base py-1 sm:py-2">
+                    <span>Platform Fee:</span>
+                    <span>Rs. {Number(platformFee).toFixed(2)}</span>
+                  </div>
+                )}
+                {tax > 0 && (
+                  <div className="total-row flex justify-between text-xs sm:text-sm sm:text-base py-1 sm:py-2">
+                    <span>GST (govt. taxes):</span>
+                    <span>Rs. {Number(tax).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="grand-total flex justify-between text-base sm:text-lg md:text-xl md:text-2xl pt-2 sm:pt-3 mt-2 sm:mt-3 border-t-2 border-[#EB590E]">
                   <span>Total:</span>
-                  <span>${order.total.toFixed(2)}</span>
+                  <span>Rs. {Number(total).toFixed(2)}</span>
                 </div>
               </div>
 

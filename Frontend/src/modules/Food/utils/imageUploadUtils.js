@@ -101,10 +101,11 @@ export const convertBase64ToFile = (
  */
 export const openBrowserCameraFallback = (onSelectFile) => {
   try {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     openTransientImageInput({
       onSelectFile,
       accept: "image/*",
-      capture: "environment",
+      capture: isMobile ? "environment" : undefined,
     })
   } catch (error) {
     console.error("Browser camera fallback failed:", error)

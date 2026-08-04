@@ -710,7 +710,8 @@ const toTripDto = (order) => {
         deliveredAt: deliveredAt,
         completedAt: deliveredAt,
         date: dateForUi,
-        time
+        time,
+        ratings: order?.ratings || null
     };
 };
 

@@ -32,6 +32,36 @@ const debugError = (...args) => { };
 
 const STORAGE_KEY = "restaurant_online_status";
 
+const formatOrderId = (orderId, mongoId) => {
+  const idStr = String(orderId || "").trim();
+  const mIdStr = String(mongoId || "").trim();
+  const primaryId = idStr || mIdStr;
+  
+  if (!primaryId) return "FOD-ORDER";
+  
+  if (primaryId.startsWith("FOD-")) {
+    const hexPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(hexPart)) {
+      return `FOD-${hexPart.slice(-6).toUpperCase()}`;
+    }
+    return primaryId;
+  }
+  
+  if (primaryId.startsWith("ORD-")) {
+    const ordPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(ordPart)) {
+      return `FOD-${ordPart.slice(-6).toUpperCase()}`;
+    }
+    return `FOD-${ordPart}`;
+  }
+  
+  if (/^[a-f0-9]{24}$/i.test(primaryId)) {
+    return `FOD-${primaryId.slice(-6).toUpperCase()}`;
+  }
+  
+  return primaryId.length > 15 ? `FOD-${primaryId.slice(-6).toUpperCase()}` : `FOD-${primaryId}`;
+};
+
 // Top filter tabs
 const filterTabs = [
   { id: "all", label: "All" },
@@ -62,7 +92,7 @@ const getAllOrdersTimestamp = (order) =>
   new Date().toISOString();
 
 const transformOrderForList = (order) => ({
-  orderId: order.orderId || order._id,
+  orderId: formatOrderId(order.orderId || order._id, order._id),
   mongoId: order._id,
   status: order.status || "pending",
   customerName: order.userId?.name || order.customerName || "Customer",
@@ -79,7 +109,7 @@ const transformOrderForList = (order) => ({
   ),
   eta: null,
   itemsSummary:
-    order.items?.map((item) => `${item.quantity}x ${item.name}`).join(", ") ||
+    order.items?.map((item) => item.variantName ? `${item.quantity}x ${item.name} (${item.variantName})` : `${item.quantity}x ${item.name}`).join(", ") ||
     "No items",
   photoUrl: order.items?.[0]?.image || null,
   photoAlt: order.items?.[0]?.name || "Order",
@@ -145,7 +175,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
           );
 
           const transformedOrders = completedOrders.map((order) => ({
-            orderId: order.orderId || order._id,
+            orderId: formatOrderId(order.orderId || order._id, order._id),
             mongoId: order._id,
             status: order.status || "delivered",
             customerName: order.userId?.name || order.customerName || "Customer",
@@ -159,7 +189,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
               order.deliveredAt || order.updatedAt || order.createdAt,
             itemsSummary:
               order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
+                ?.map((item) => item.variantName ? `${item.quantity}x ${item.name} (${item.variantName})` : `${item.quantity}x ${item.name}`)
                 .join(", ") || "No items",
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
@@ -351,7 +381,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
           );
 
           const transformedOrders = cancelledOrders.map((order) => ({
-            orderId: order.orderId || order._id,
+            orderId: formatOrderId(order.orderId || order._id, order._id),
             mongoId: order._id,
             status: order.status || "cancelled",
             customerName: order.userId?.name || order.customerName || "Customer",
@@ -368,7 +398,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
               order.cancellationReason || "No reason provided",
             itemsSummary:
               order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
+                ?.map((item) => item.variantName ? `${item.quantity}x ${item.name} (${item.variantName})` : `${item.quantity}x ${item.name}`)
                 .join(", ") || "No items",
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
@@ -1919,7 +1949,7 @@ export default function OrdersMain() {
 
         // Prepare table data
         const tableData = orderToPrint.items.map((item) => [
-          item.name || "Item",
+          item.variantName ? `${item.name || "Item"} (${item.variantName})` : (item.name || "Item"),
           item.quantity || 1,
           `Rs. ${(item.price || 0).toFixed(2)}`,
           `Rs. ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
@@ -2453,8 +2483,9 @@ export default function OrdersMain() {
                           {restaurantStatus.restaurantName || (popupOrder || newOrder)?.restaurantName || "Restaurant"}
                         </h3>
                       </div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">New Order</p>
-                      <p className="text-2xl font-black text-gray-900 tracking-tight">{(popupOrder || newOrder)?.orderId || "#Order"}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">🆕 New Order</p>
+                      <p className="text-[11px] font-bold text-gray-400 mb-0.5">Order ID</p>
+                      <p className="text-2xl font-black text-gray-900 tracking-tight">#{(popupOrder || newOrder)?.orderId || "—"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2477,7 +2508,12 @@ export default function OrdersMain() {
                         <div key={idx} className="flex justify-between items-start gap-4">
                           <div className="flex gap-2.5">
                             <span className="text-sm font-black text-emerald-600 bg-emerald-50 w-6 h-6 rounded-md flex items-center justify-center shrink-0">{item.quantity}</span>
-                            <span className="text-sm font-bold text-gray-800 leading-tight">{item.name}</span>
+                            <span className="text-sm font-bold text-gray-800 leading-tight">
+                              {item.name}
+                              {item.variantName && (
+                                <span className="text-gray-400 font-medium"> ({item.variantName})</span>
+                              )}
+                            </span>
                           </div>
                           <span className="text-sm font-medium text-gray-400 shrink-0">₹{item.price * item.quantity}</span>
                         </div>
@@ -2500,15 +2536,18 @@ export default function OrdersMain() {
                     <div className="bg-gray-50 p-4 rounded-[20px] border border-gray-100">
                       <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Payment</p>
                       {(() => {
-                        const raw = (popupOrder || newOrder)?.paymentMethod || (popupOrder || newOrder)?.payment?.method;
-                        const m = raw != null ? String(raw).toLowerCase().trim() : "";
-                        const isCod = m === "cash" || m === "cod";
-                        const isWallet = m === "wallet";
-                        return (
-                          <p className={`text-sm font-black leading-tight ${isCod ? "text-amber-600" : isWallet ? "text-blue-600" : "text-emerald-600"}`}>
-                            {isCod ? "Cash on Delivery" : isWallet ? "Wallet" : "Online Paid"}
-                          </p>
-                        );
+                        const raw = String((popupOrder || newOrder)?.paymentMethod || (popupOrder || newOrder)?.payment?.method || "").toLowerCase().trim();
+                        const label =
+                          raw === "cash" ? "💵 Cash on Delivery" :
+                          raw === "wallet" ? "👛 Wallet" :
+                          raw === "razorpay_qr" ? "📷 Razorpay QR" :
+                          raw === "razorpay" ? "💳 Online (Razorpay)" :
+                          raw ? raw.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "—";
+                        const color =
+                          raw === "cash" ? "text-amber-600" :
+                          raw === "wallet" ? "text-blue-600" :
+                          "text-emerald-600";
+                        return <p className={`text-sm font-black leading-tight ${color}`}>{label}</p>;
                       })()}
                     </div>
                   </div>
@@ -2894,18 +2933,18 @@ export default function OrdersMain() {
                   </span>
                 )}
                 {(() => {
-                  const raw = selectedOrder.paymentMethod;
-                  const normalized =
-                    raw != null ? String(raw).toLowerCase().trim() : "";
-                  const isCod = normalized === "cash" || normalized === "cod";
-                  const isWallet = normalized === "wallet";
+                  const raw = String(selectedOrder.paymentMethod || selectedOrder.payment?.method || "").toLowerCase().trim();
+                  const label =
+                    raw === "cash" ? "Cash on Delivery" :
+                    raw === "wallet" ? "Wallet" :
+                    raw === "razorpay_qr" ? "Razorpay QR" :
+                    raw === "razorpay" ? "Razorpay (Online)" :
+                    raw ? raw.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "—";
+                  const color = raw === "cash" ? "text-amber-700" : raw === "wallet" ? "text-blue-600" : "text-emerald-600";
                   return (
                     <span>
                       Payment:{" "}
-                      <span
-                        className={`font-medium ${isCod ? "text-amber-700" : isWallet ? "text-blue-600" : "text-black"}`}>
-                        {isCod ? "Cash on Delivery" : isWallet ? "Wallet" : "Paid online"}
-                      </span>
+                      <span className={`font-medium ${color}`}>{label}</span>
                     </span>
                   );
                 })()}
@@ -3096,7 +3135,7 @@ function PreparingOrders({
               : new Date(order.createdAt); // Fallback to createdAt if preparing timestamp not available
 
             return {
-              orderId: order.orderId || order._id,
+              orderId: formatOrderId(order.orderId || order._id, order._id),
               mongoId: order._id,
               status: order.status || "preparing",
               customerName: order.userId?.name || "Customer",
@@ -3113,7 +3152,7 @@ function PreparingOrders({
               preparingTimestamp, // Store when order started preparing
               itemsSummary:
                 order.items
-                  ?.map((item) => `${item.quantity}x ${item.name}`)
+                  ?.map((item) => item.variantName ? `${item.quantity}x ${item.name} (${item.variantName})` : `${item.quantity}x ${item.name}`)
                   .join(", ") || "No items",
               photoUrl: order.items?.[0]?.image || null,
               photoAlt: order.items?.[0]?.name || "Order",
@@ -3412,7 +3451,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
           );
 
           const transformedOrders = readyOrders.map((order) => ({
-            orderId: order.orderId || order._id,
+            orderId: formatOrderId(order.orderId || order._id, order._id),
             mongoId: order._id,
             status: order.status || "ready",
             customerName: order.userId?.name || "Customer",
@@ -3428,7 +3467,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
             eta: null, // Don't show ETA for ready orders
             itemsSummary:
               order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
+                ?.map((item) => item.variantName ? `${item.quantity}x ${item.name} (${item.variantName})` : `${item.quantity}x ${item.name}`)
                 .join(", ") || "No items",
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
@@ -3530,7 +3569,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
           );
 
           const transformedOrders = outForDeliveryOrders.map((order) => ({
-            orderId: order.orderId || order._id,
+            orderId: formatOrderId(order.orderId || order._id, order._id),
             mongoId: order._id,
             status: order.status || "out_for_delivery",
             customerName: order.userId?.name || "Customer",
@@ -3546,7 +3585,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
             eta: null,
             itemsSummary:
               order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
+                ?.map((item) => item.variantName ? `${item.quantity}x ${item.name} (${item.variantName})` : `${item.quantity}x ${item.name}`)
                 .join(", ") || "No items",
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",

@@ -306,16 +306,19 @@ export default function HomeHeader({
 
                   const rawAddress = location.formattedAddress || location.address;
                   if (rawAddress) {
-                    const parts = rawAddress.split(",").map(p => p.trim()).filter(Boolean);
-                    const cleanParts = parts.filter(p => !/^\d{6}$/.test(p) && p.toLowerCase() !== "india");
+                    const isCoordinates = /^-?\d+\.?\d*,\s*-?\d+\.?\d*$/.test(rawAddress.trim());
+                    if (!isCoordinates) {
+                      const parts = rawAddress.split(",").map(p => p.trim()).filter(Boolean);
+                      const cleanParts = parts.filter(p => !/^\d{6}$/.test(p) && p.toLowerCase() !== "india");
 
-                    let startIndex = 0;
-                    if (cleanParts.length > 1 && /^[\d\s\-\/\,]+$/.test(cleanParts[0])) {
-                      startIndex = 1;
+                      let startIndex = 0;
+                      if (cleanParts.length > 1 && /^[\d\s\-\/\,]+$/.test(cleanParts[0])) {
+                        startIndex = 1;
+                      }
+
+                      const selected = cleanParts.slice(startIndex, startIndex + 3);
+                      if (selected.length > 0) return selected.join(", ");
                     }
-
-                    const selected = cleanParts.slice(startIndex, startIndex + 3);
-                    if (selected.length > 0) return selected.join(", ");
                   }
 
                   return city || "Select Location";

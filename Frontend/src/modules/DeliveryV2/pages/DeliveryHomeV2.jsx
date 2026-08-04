@@ -449,10 +449,19 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           }).catch(() => { });
         }
       }
-    }, () => toast.error('GPS Needed!'), {
+    }, (error) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        toast.error('Location permission denied! GPS is required to deliver orders.', { id: 'gps-error' });
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        toast.error('GPS signal unavailable. Please ensure location/GPS is on.', { id: 'gps-error' });
+      } else if (error.code === error.TIMEOUT) {
+        // Silently log timeout to console; watchPosition automatically retries
+        console.warn('GPS location request timed out. Retrying...');
+      }
+    }, {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 5000
+      timeout: 15000
     });
 
     return () => navigator.geolocation.clearWatch(watchId);

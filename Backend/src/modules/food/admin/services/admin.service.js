@@ -325,9 +325,20 @@ export async function updateRestaurantComplaint(id, updateData) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw new ValidationError('Invalid complaint ID');
     }
+
+    // Fetch the current complaint to check if it is already resolved
+    const existing = await FoodSupportTicket.findById(id).lean();
+    if (!existing) throw new ValidationError('Complaint not found');
+
+    // Prevent reopening or changing status of a resolved complaint
+    const incomingStatus = updateData.status ? String(updateData.status) : null;
+    if (existing.status === 'resolved' && incomingStatus && incomingStatus !== 'resolved') {
+        throw new ValidationError('Resolved complaints cannot be reopened or changed to another status');
+    }
+
     const update = {};
-    if (updateData.status && ['open', 'in-progress', 'resolved'].includes(String(updateData.status))) {
-        update.status = String(updateData.status);
+    if (incomingStatus && ['open', 'in-progress', 'resolved'].includes(incomingStatus)) {
+        update.status = incomingStatus;
     }
     if (updateData.adminResponse !== undefined) update.adminResponse = updateData.adminResponse;
 
@@ -4310,6 +4321,7 @@ export async function getAllOffers(_query = {}) {
             minOrderValue: o.minOrderValue ?? 0,
             maxDiscount: o.maxDiscount ?? null,
             usageLimit: o.usageLimit ?? null,
+            perUserLimit: o.perUserLimit ?? null,
             usedCount: o.usedCount ?? 0,
             restaurantScope: o.restaurantScope,
             createdByRole: o.createdByRole || 'ADMIN',

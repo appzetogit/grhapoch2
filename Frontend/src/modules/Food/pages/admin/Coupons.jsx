@@ -367,6 +367,21 @@ export default function Coupons() {
         return
       }
     }
+    if (field === "customerScope") {
+      setFormData((prev) => {
+        const next = {
+          ...prev,
+          customerScope: value,
+          // First-time users can only use a coupon once — enforce perUserLimit = 1
+          perUserLimit: value === "first-time" ? "1" : prev.perUserLimit,
+        }
+        validateForm(next)
+        return next
+      })
+      if (submitError) setSubmitError("")
+      if (submitSuccess) setSubmitSuccess("")
+      return
+    }
     if (field === "restaurantScope" && value === "all") {
       setFormData((prev) => {
         const next = { ...prev, restaurantScope: value, restaurantIds: [] }
@@ -469,7 +484,12 @@ export default function Coupons() {
     setSubmitError("")
     setSubmitSuccess("")
     setIsAddOpen(true)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    const mainEl = document.querySelector("main")
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: "smooth" })
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
   }
 
   const handleCreateCoupon = async (e) => {
@@ -795,7 +815,12 @@ export default function Coupons() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Per User Limit</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Per User Limit
+                  {formData.customerScope === "first-time" && (
+                    <span className="ml-2 text-xs font-normal text-amber-600">(locked to 1 for first-time users)</span>
+                  )}
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -803,21 +828,21 @@ export default function Coupons() {
                   value={formData.perUserLimit}
                   onChange={(e) => handleFormChange("perUserLimit", e.target.value)}
                   placeholder="e.g. 1"
-                  className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.perUserLimit ? "border-red-500" : "border-slate-300"} bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={formData.customerScope === "first-time"}
+                  readOnly={formData.customerScope === "first-time"}
+                  className={`w-full px-3 py-2.5 text-sm rounded-lg border ${
+                    errors.perUserLimit ? "border-red-500" : "border-slate-300"
+                  } ${
+                    formData.customerScope === "first-time"
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-70"
+                      : "bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  }`}
                 />
                 {errors.perUserLimit && <p className="mt-1 text-xs text-red-600">{errors.perUserLimit}</p>}
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  id="isFirstOrderOnly"
-                  type="checkbox"
-                  checked={formData.isFirstOrderOnly}
-                  onChange={(e) => handleFormChange("isFirstOrderOnly", e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <label htmlFor="isFirstOrderOnly" className="text-sm text-slate-700">First order only</label>
-              </div>
+
+
 
                 {formData.restaurantScope === "selected" && (
                   <div className="md:col-span-2 lg:col-span-3">

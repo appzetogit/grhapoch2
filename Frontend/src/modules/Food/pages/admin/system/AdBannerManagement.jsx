@@ -27,6 +27,40 @@ import { Badge } from "@food/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@food/components/ui/card";
 import { toast } from "sonner";
 
+// Format Restaurant ID to REST format (e.g., REST422829)
+const formatRestaurantId = (id) => {
+  if (!id) return "REST000000";
+
+  const idString = String(id);
+  const parts = idString.split(/[-.]/);
+  let lastDigits = "";
+
+  if (parts.length > 0) {
+    const lastPart = parts[parts.length - 1];
+    const digits = lastPart.match(/\d+/g);
+    if (digits && digits.length > 0) {
+      const allDigits = digits.join("");
+      lastDigits = allDigits.slice(-6).padStart(6, "0");
+    } else {
+      const allParts = parts.join("");
+      const allDigits = allParts.match(/\d+/g);
+      if (allDigits && allDigits.length > 0) {
+        const combinedDigits = allDigits.join("");
+        lastDigits = combinedDigits.slice(-6).padStart(6, "0");
+      }
+    }
+  }
+
+  if (!lastDigits) {
+    const hash = idString.split("").reduce((acc, char) => {
+      return ((acc << 5) - acc) + char.charCodeAt(0) | 0;
+    }, 0);
+    lastDigits = Math.abs(hash).toString().slice(-6).padStart(6, "0");
+  }
+
+  return `REST${lastDigits}`;
+};
+
 export default function AdBannerManagement() {
   const { subTab } = useParams();
   const location = useLocation();
@@ -73,8 +107,13 @@ export default function AdBannerManagement() {
       const bizRes = await adminAPI.getBusinessSettings();
       const settings = bizRes?.data?.data || bizRes?.data;
       if (settings) {
-        setAdDays(settings.adBannerDays ?? 30);
-        setAdPrice(settings.adBannerPrice ?? 2000);
+        if (isRestaurantMode) {
+          setAdDays(settings.restaurantAdBannerDays ?? settings.adBannerDays ?? 30);
+          setAdPrice(settings.restaurantAdBannerPrice ?? settings.adBannerPrice ?? 2000);
+        } else {
+          setAdDays(settings.userAdBannerDays ?? settings.adBannerDays ?? 30);
+          setAdPrice(settings.userAdBannerPrice ?? settings.adBannerPrice ?? 2000);
+        }
       }
     } catch (err) {
       console.error("Error loading settings:", err);
@@ -129,9 +168,15 @@ export default function AdBannerManagement() {
         state: current.state || "",
         pincode: current.pincode || "",
         region: current.region || "India",
-        adBannerDays: Number(adDays || 1),
-        adBannerPrice: Number(adPrice || 0)
       };
+
+      if (isRestaurantMode) {
+        payload.restaurantAdBannerDays = Number(adDays || 1);
+        payload.restaurantAdBannerPrice = Number(adPrice || 0);
+      } else {
+        payload.userAdBannerDays = Number(adDays || 1);
+        payload.userAdBannerPrice = Number(adPrice || 0);
+      }
 
       await adminAPI.updateBusinessSettings(payload, {});
       toast.success("Advertising package saved successfully");
@@ -326,8 +371,8 @@ export default function AdBannerManagement() {
                       <input 
                         type="number"
                         min="1"
-                        value={adDays}
-                        onChange={(e) => setAdDays(Number(e.target.value))}
+                        value={adDays === 0 ? "" : adDays}
+                        onChange={(e) => setAdDays(e.target.value === "" ? 0 : Number(e.target.value))}
                         className="w-full border border-slate-300 px-3.5 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-600 bg-white font-semibold"
                         required
                       />
@@ -341,8 +386,8 @@ export default function AdBannerManagement() {
                       <input 
                         type="number"
                         min="0"
-                        value={adPrice}
-                        onChange={(e) => setAdPrice(Number(e.target.value))}
+                        value={adPrice === 0 ? "" : adPrice}
+                        onChange={(e) => setAdPrice(e.target.value === "" ? 0 : Number(e.target.value))}
                         className="w-full border border-slate-300 px-3.5 py-2.5 text-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-600 bg-white font-semibold"
                         required
                       />
@@ -587,7 +632,7 @@ export default function AdBannerManagement() {
                       <span className="font-bold text-slate-500">No redirection target</span>
                     ) : viewingAd.targetType === "restaurant" ? (
                       <span className="font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
-                        Restaurant Profile ({viewingAd.targetId || "ID missing"})
+                        Restaurant Profile ({formatRestaurantId(viewingAd.targetId)})
                       </span>
                     ) : (
                       <a 

@@ -32,6 +32,36 @@ const ORDER_STATUS_API_MAP = {
 
 const formatMoney = (value) => `₹${Number(value || 0).toFixed(2)}`
 
+const formatOrderId = (orderId, mongoId) => {
+  const idStr = String(orderId || "").trim();
+  const mIdStr = String(mongoId || "").trim();
+  const primaryId = idStr || mIdStr;
+  
+  if (!primaryId) return "FOD-ORDER";
+  
+  if (primaryId.startsWith("FOD-")) {
+    const hexPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(hexPart)) {
+      return `FOD-${hexPart.slice(-6).toUpperCase()}`;
+    }
+    return primaryId;
+  }
+  
+  if (primaryId.startsWith("ORD-")) {
+    const ordPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(ordPart)) {
+      return `FOD-${ordPart.slice(-6).toUpperCase()}`;
+    }
+    return `FOD-${ordPart}`;
+  }
+  
+  if (/^[a-f0-9]{24}$/i.test(primaryId)) {
+    return `FOD-${primaryId.slice(-6).toUpperCase()}`;
+  }
+  
+  return primaryId.length > 15 ? `FOD-${primaryId.slice(-6).toUpperCase()}` : `FOD-${primaryId}`;
+};
+
 // Initialize with current week if needed
 const getCurrentWeek = () => {
   const today = new Date()
@@ -211,6 +241,7 @@ export default function AllOrdersPage() {
     // Format items
     const items = (order.items || []).map(item => ({
       name: item.name || 'Item',
+      variantName: item.variantName || '',
       quantity: item.quantity || 1,
       price: item.price || 0
     }))
@@ -254,7 +285,7 @@ export default function AllOrdersPage() {
     )
 
     return {
-      id: order.orderId || order._id?.toString() || '',
+      id: formatOrderId(order.orderId || order._id?.toString() || '', order._id?.toString()),
       status,
       date,
       time,
@@ -713,7 +744,7 @@ export default function AllOrdersPage() {
               {order.items.slice(0, 1).map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between gap-3">
                   <span className="text-sm text-gray-900">
-                    {item.quantity} x {item.name}
+                    {item.quantity} x {item.name}{item.variantName ? ` (${item.variantName})` : ''}
                   </span>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-medium text-gray-900">{formatMoney(order.netPayout)}</p>

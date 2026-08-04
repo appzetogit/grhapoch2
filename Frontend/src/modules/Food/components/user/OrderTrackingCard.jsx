@@ -38,8 +38,43 @@ import { resolveMediaUrl } from "@food/utils/common";
 
 const getOrderKey = (order) => order?.id || order?._id || order?.orderId || null;
 
-const getOrderStatus = (order) =>
-  String(order?.orderStatus || order?.status || order?.deliveryState?.status || "").toLowerCase();
+const formatOrderId = (orderId, mongoId) => {
+  const idStr = String(orderId || "").trim();
+  const mIdStr = String(mongoId || "").trim();
+  const primaryId = idStr || mIdStr;
+  
+  if (!primaryId) return "FOD-ORDER";
+  
+  if (primaryId.startsWith("FOD-")) {
+    const hexPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(hexPart)) {
+      return `FOD-${hexPart.slice(-6).toUpperCase()}`;
+    }
+    return primaryId;
+  }
+  
+  if (primaryId.startsWith("ORD-")) {
+    const ordPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(ordPart)) {
+      return `FOD-${ordPart.slice(-6).toUpperCase()}`;
+    }
+    return `FOD-${ordPart}`;
+  }
+  
+  if (/^[a-f0-9]{24}$/i.test(primaryId)) {
+    return `FOD-${primaryId.slice(-6).toUpperCase()}`;
+  }
+  
+  return primaryId.length > 15 ? `FOD-${primaryId.slice(-6).toUpperCase()}` : `FOD-${primaryId}`;
+};
+
+const getOrderStatus = (order) => {
+  const deliveryStatus = order?.deliveryState?.status;
+  if (deliveryStatus && deliveryStatus !== "none" && deliveryStatus !== "created") {
+    return String(deliveryStatus).toLowerCase();
+  }
+  return String(order?.orderStatus || order?.status || "").toLowerCase();
+};
 
 const getOrderPhase = (order) =>
   String(order?.deliveryState?.currentPhase || "").toLowerCase();
@@ -395,11 +430,17 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
   const orderStatus = getOrderStatus(activeOrder) || "preparing";
   const orderPhase = getOrderPhase(activeOrder);
   const isDelivered = orderStatus === "delivered" || orderStatus === "completed" || orderPhase === "delivered" || orderPhase === "completed";
+  const isRiderAccepted =
+    activeOrder?.dispatch?.status === "accepted" ||
+    activeOrder?.assignmentInfo?.status === "accepted" ||
+    activeOrder?.deliveryPartner?.status === "accepted";
+  const isRiderArrived =
+    orderStatus === "reached_pickup" ||
+    orderStatus === "reached_drop" ||
+    orderPhase === "at_pickup" ||
+    orderPhase === "at_drop";
 
-  const rawOrderId = String(activeOrder.orderId || activeOrder.order_id || activeOrder.displayOrderId || "");
-  const displayOrderId = rawOrderId
-    ? (rawOrderId.startsWith("FOD-") ? rawOrderId : `FOD-${rawOrderId.replace(/^ORD-/, "")}`)
-    : (currentOrderKey ? `FOD-${currentOrderKey.slice(-6).toUpperCase()}` : "");
+  const displayOrderId = formatOrderId(activeOrder.orderId || activeOrder.order_id || activeOrder.displayOrderId, currentOrderKey);
 
   const restaurantName =
     activeOrder.restaurant || activeOrder.restaurantName || activeOrder.restaurantId?.restaurantName || "Restaurant";
@@ -511,7 +552,7 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
               )}
             </div>
 
-            {isDelivered ? null : (
+            {isDelivered || !isRiderAccepted || isRiderArrived ? null : (
               <div
                 className="shadow-md rounded-xl px-3 py-1.5 shrink-0 flex flex-col items-center justify-center border"
                 style={{

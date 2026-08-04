@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, ChevronDown, Loader2, Gift, 
-  CheckCircle2, Clock, Search, History, Calendar, Filter
+  CheckCircle2, Clock, Search, History, Calendar, Filter, Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { deliveryAPI, restaurantAPI } from '@food/api';
@@ -323,6 +323,24 @@ export const HistoryV2 = () => {
                                 <p className="text-xs font-bold text-gray-900">₹{payout.toFixed(0)}</p>
                              </div>
                           </div>
+
+                          {trip.ratings?.deliveryPartner?.rating > 0 && (
+                             <div className="mt-2.5 px-3 py-2 bg-amber-50/50 dark:bg-amber-950/10 rounded-xl border border-amber-100/50 dark:border-amber-900/20 space-y-1">
+                                <div className="flex items-center justify-between">
+                                   <span className="text-[9px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                                      <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> Customer Rating
+                                   </span>
+                                   <span className="text-xs font-extrabold text-amber-900 dark:text-amber-300">
+                                      {trip.ratings.deliveryPartner.rating} / 5
+                                   </span>
+                                </div>
+                                {trip.ratings.deliveryPartner.comment && (
+                                   <p className="text-[10px] text-amber-800/80 dark:text-amber-400/80 italic font-medium leading-relaxed">
+                                      "{trip.ratings.deliveryPartner.comment}"
+                                   </p>
+                                )}
+                             </div>
+                          )}
                       </div>
                    );
                 })}

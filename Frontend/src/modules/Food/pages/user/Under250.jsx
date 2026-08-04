@@ -267,8 +267,13 @@ export default function Under250() {
   }, [getDefaultAddress, formatSavedAddress]);
 
   const displayLocation = useMemo(() => {
-    if (deliveryAddressMode === "saved" && savedAddressText) return savedAddressText
-    return effectiveLocation?.formattedAddress || effectiveLocation?.address || (effectiveLocation?.area && effectiveLocation?.city
+    if (deliveryAddressMode === "saved" && savedAddressText) return savedAddressText;
+    const isCoords = (str) => /^-?\d+\.?\d*,\s*-?\d+\.?\d*$/.test(String(str || "").trim());
+    const rawAddress = !isCoords(effectiveLocation?.formattedAddress) && effectiveLocation?.formattedAddress 
+      ? effectiveLocation.formattedAddress 
+      : (!isCoords(effectiveLocation?.address) && effectiveLocation?.address ? effectiveLocation.address : null);
+
+    return rawAddress || (effectiveLocation?.area && effectiveLocation?.city
       ? `${effectiveLocation.area}, ${effectiveLocation.city}`
       : effectiveLocation?.area || effectiveLocation?.city || "Select Location")
   }, [deliveryAddressMode, savedAddressText, effectiveLocation])
@@ -1144,7 +1149,7 @@ export default function Under250() {
 
   return (
 
-    <div className={`relative min-h-screen bg-white dark:bg-[#0a0a0a]`}>
+    <div className={`relative min-h-screen bg-white dark:bg-[#0a0a0a] overflow-x-hidden`}>
       {/* Premium Glassmorphic Header Wrapper */}
       <div className="sticky top-0 z-50 w-full bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-xl shadow-sm border-b border-gray-100 dark:border-gray-900 md:hidden">
         {/* Top Row: Back, Title & Actions */}

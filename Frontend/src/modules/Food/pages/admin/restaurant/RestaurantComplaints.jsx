@@ -490,16 +490,24 @@ export default function RestaurantComplaints() {
                       </div>
 
                       <div className="flex flex-row lg:flex-col gap-2 shrink-0">
-                        <select
-                          value={status}
-                          onChange={(e) => handleStatusChange(complaint._id, e.target.value)}
-                          disabled={updating}
-                          className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]"
-                        >
-                          <option value="open">Open</option>
-                          <option value="in-progress">In Progress</option>
-                          <option value="resolved">Resolved</option>
-                        </select>
+                        {status === "resolved" ? (
+                          <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm min-w-[140px] cursor-not-allowed select-none">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="font-medium">Resolved</span>
+                            <span className="text-emerald-400 text-xs">🔒</span>
+                          </div>
+                        ) : (
+                          <select
+                            value={status}
+                            onChange={(e) => handleStatusChange(complaint._id, e.target.value)}
+                            disabled={updating}
+                            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]"
+                          >
+                            <option value="open">Open</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                          </select>
+                        )}
                         <button
                           type="button"
                           onClick={() => openView(complaint)}
@@ -511,10 +519,15 @@ export default function RestaurantComplaints() {
                         <button
                           type="button"
                           onClick={() => openResponse(complaint)}
-                          className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+                          disabled={status === "resolved"}
+                          className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                            status === "resolved"
+                              ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                              : "bg-blue-600 text-white hover:bg-blue-700"
+                          }`}
                         >
                           <Edit className="w-4 h-4" />
-                          Respond
+                          {status === "resolved" ? "Closed" : "Respond"}
                         </button>
                       </div>
                     </div>
@@ -644,28 +657,35 @@ export default function RestaurantComplaints() {
                 ) : null}
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsViewOpen(false)
-                      openResponse(selectedComplaint)
-                    }}
-                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm"
-                  >
-                    {selectedComplaint.adminResponse ? "Edit Response" : "Send Response"}
-                  </button>
-                  {normalizeStatus(selectedComplaint.status) !== "resolved" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleStatusChange(selectedComplaint._id, "resolved")
-                        setIsViewOpen(false)
-                      }}
-                      className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors shadow-sm"
-                    >
-                      Mark Resolved
-                    </button>
-                  ) : null}
+                  {normalizeStatus(selectedComplaint.status) === "resolved" ? (
+                    <div className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 font-medium">
+                      <CheckCircle className="w-4 h-4" />
+                      This complaint has been resolved and is now closed 🔒
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsViewOpen(false)
+                          openResponse(selectedComplaint)
+                        }}
+                        className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm"
+                      >
+                        {selectedComplaint.adminResponse ? "Edit Response" : "Send Response"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleStatusChange(selectedComplaint._id, "resolved")
+                          setIsViewOpen(false)
+                        }}
+                        className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors shadow-sm"
+                      >
+                        Mark Resolved
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

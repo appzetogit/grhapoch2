@@ -207,6 +207,14 @@ export default function Dining() {
   }, [defaultSavedAddress]);
 
   const effectiveLocation = useMemo(() => {
+    // Use the current active/GPS location for restaurant filtering (same as homepage).
+    // Fall back to saved address only when no active location is available.
+    const hasActiveLocation =
+      Number.isFinite(location?.latitude) &&
+      Number.isFinite(location?.longitude);
+
+    if (hasActiveLocation) return location;
+
     const useSavedAddress =
       Number.isFinite(defaultSavedAddressLocation?.latitude) &&
       Number.isFinite(defaultSavedAddressLocation?.longitude);
@@ -214,7 +222,12 @@ export default function Dining() {
     return useSavedAddress ? defaultSavedAddressLocation : location;
   }, [defaultSavedAddressLocation, location]);
 
-  const displayLocation = savedAddressText || location?.formattedAddress || location?.address || (location?.area && location?.city 
+  const isCoords = (str) => /^-?\d+\.?\d*,\s*-?\d+\.?\d*$/.test(String(str || "").trim());
+  const rawAddress = !isCoords(location?.formattedAddress) && location?.formattedAddress 
+    ? location.formattedAddress 
+    : (!isCoords(location?.address) && location?.address ? location.address : null);
+
+  const displayLocation = savedAddressText || rawAddress || (location?.area && location?.city 
     ? `${location.area}, ${location.city}` 
     : location?.area || location?.city || "Select Location");
 

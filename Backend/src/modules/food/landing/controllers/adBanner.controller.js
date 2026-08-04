@@ -16,8 +16,15 @@ import { createInboxNotifications } from '../../../../core/notifications/notific
 export async function getAdPricing(req, res, next) {
     try {
         const settings = await FoodBusinessSettings.findOne().lean();
-        const adDays = settings?.adBannerDays ?? 30;
-        const adPrice = settings?.adBannerPrice ?? 2000;
+        const type = req.query.type || 'user';
+        let adDays, adPrice;
+        if (type === 'restaurant') {
+            adDays = settings?.restaurantAdBannerDays ?? settings?.adBannerDays ?? 30;
+            adPrice = settings?.restaurantAdBannerPrice ?? settings?.adBannerPrice ?? 2000;
+        } else {
+            adDays = settings?.userAdBannerDays ?? settings?.adBannerDays ?? 30;
+            adPrice = settings?.userAdBannerPrice ?? settings?.adBannerPrice ?? 2000;
+        }
         return sendResponse(res, 200, 'Ad pricing fetched successfully', {
             adDays,
             adPrice
@@ -60,10 +67,15 @@ export async function requestAdCampaign(req, res, next) {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         const settings = await FoodBusinessSettings.findOne().lean();
-        const cost = settings?.adBannerPrice ?? 2000;
-
         const requesterId = req.user.userId;
         const requesterType = req.user.role === 'RESTAURANT' ? 'FoodRestaurant' : 'FoodUser';
+
+        let cost;
+        if (requesterType === 'FoodRestaurant') {
+            cost = settings?.restaurantAdBannerPrice ?? settings?.adBannerPrice ?? 2000;
+        } else {
+            cost = settings?.userAdBannerPrice ?? settings?.adBannerPrice ?? 2000;
+        }
 
         const receipt = `ad_${Date.now()}`;
         const amountPaise = Math.round(cost * 100);
@@ -280,12 +292,20 @@ export async function adminApproveAdRequest(req, res, next) {
 
         // Notify owner
         const ownerType = adBanner.requesterType === 'FoodRestaurant' ? 'RESTAURANT' : 'USER';
+        
+        // Format date to DD/MM/YYYY
+        const d = new Date(adBanner.startDate);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const formattedDate = `${day}/${month}/${year}`;
+
         try {
             await notifyOwnerSafely(
                 { ownerType, ownerId: adBanner.requesterId.toString() },
                 {
                     title: 'Ad Banner Approved! 🎉',
-                    body: `Your banner advertisement starting on ${new Date(adBanner.startDate).toLocaleDateString()} was approved by the admin.`,
+                    body: `Your banner advertisement starting on ${formattedDate} was approved by the admin.`,
                     data: {
                         type: 'ad_banner_approval',
                         adBannerId: adBanner._id.toString()
@@ -299,7 +319,7 @@ export async function adminApproveAdRequest(req, res, next) {
                     ownerType,
                     ownerId: adBanner.requesterId,
                     title: 'Ad Banner Approved! 🎉',
-                    message: `Your banner advertisement starting on ${new Date(adBanner.startDate).toLocaleDateString()} was approved by the admin.`,
+                    message: `Your banner advertisement starting on ${formattedDate} was approved by the admin.`,
                     category: 'ad_banner_status',
                     source: 'ADMIN_BROADCAST',
                     metadata: {
@@ -318,7 +338,7 @@ export async function adminApproveAdRequest(req, res, next) {
                 io.to(userRoom).emit('admin_notification', {
                     id: adBanner._id.toString(),
                     title: 'Ad Banner Approved! 🎉',
-                    message: `Your banner advertisement starting on ${new Date(adBanner.startDate).toLocaleDateString()} was approved by the admin.`,
+                    message: `Your banner advertisement starting on ${formattedDate} was approved by the admin.`,
                     type: 'ad_banner_approval',
                     createdAt: new Date()
                 });

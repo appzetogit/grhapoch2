@@ -1189,7 +1189,7 @@ export const adminAPI = {
 /** Restaurant API - OTP login via new backend; no email/password. */
 export const restaurantAPI = {
   getAdPricing: () =>
-    apiClient.get("/food/advertising/pricing", { contextModule: "restaurant" }),
+    apiClient.get("/food/advertising/pricing?type=restaurant", { contextModule: "restaurant" }),
   requestAdCampaign: (body) =>
     apiClient.post("/food/advertising/request", body, { contextModule: "restaurant" }),
   verifyAdPayment: (body) =>
@@ -2470,7 +2470,7 @@ export const deliveryAPI = {
 
 export const userAPI = {
   getAdPricing: () =>
-    apiClient.get("/food/advertising/pricing", { contextModule: "user" }),
+    apiClient.get("/food/advertising/pricing?type=user", { contextModule: "user" }),
   requestAdCampaign: (body) =>
     apiClient.post("/food/advertising/request", body, { contextModule: "user" }),
   verifyAdPayment: (body) =>

@@ -15,6 +15,36 @@ const toNum = (value) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const formatOrderId = (orderId, mongoId) => {
+  const idStr = String(orderId || "").trim();
+  const mIdStr = String(mongoId || "").trim();
+  const primaryId = idStr || mIdStr;
+  
+  if (!primaryId) return "FOD-ORDER";
+  
+  if (primaryId.startsWith("FOD-")) {
+    const hexPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(hexPart)) {
+      return `FOD-${hexPart.slice(-6).toUpperCase()}`;
+    }
+    return primaryId;
+  }
+  
+  if (primaryId.startsWith("ORD-")) {
+    const ordPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(ordPart)) {
+      return `FOD-${ordPart.slice(-6).toUpperCase()}`;
+    }
+    return `FOD-${ordPart}`;
+  }
+  
+  if (/^[a-f0-9]{24}$/i.test(primaryId)) {
+    return `FOD-${primaryId.slice(-6).toUpperCase()}`;
+  }
+  
+  return primaryId.length > 15 ? `FOD-${primaryId.slice(-6).toUpperCase()}` : `FOD-${primaryId}`;
+};
+
 
 export default function Orders() {
   const navigate = useNavigate()
@@ -58,6 +88,21 @@ export default function Orders() {
       debugError('Error saving shownRatingForOrders to localStorage:', error)
     }
   }, [shownRatingForOrders])
+
+  // Lock body scroll when rating modal is open
+  useEffect(() => {
+    if (ratingModal.open) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [ratingModal.open])
 
   // Calculate countdown for an order
   const calculateCountdown = (order) => {
@@ -348,10 +393,7 @@ export default function Orders() {
             const computedTotal = Math.max(0, subtotal + deliveryFee + packagingFee + platformFee + tax - discount)
             const total = toNum(pricing.total ?? order.total ?? computedTotal) || computedTotal
 
-            const rawOId = String(order.orderId || order.order_id || order.displayOrderId || '');
-            const formattedOId = rawOId
-              ? (rawOId.startsWith('FOD-') ? rawOId : `FOD-${rawOId.replace(/^ORD-/, '')}`)
-              : (order._id ? `FOD-${order._id.toString().slice(-6).toUpperCase()}` : `FOD-${String(order.id || '').slice(-6).toUpperCase()}`);
+            const formattedOId = formatOrderId(order.orderId || order.order_id || order.displayOrderId || order.id || order._id, order._id);
 
             return {
               id: order._id?.toString() || order.orderId || `ORD-${order._id}`,
@@ -510,11 +552,12 @@ export default function Orders() {
 
     const reorderItems = order.items
       .map((item, index) => {
-        const itemId = item.id || item.itemId || item._id
+        const itemId = item.itemId || item.id || item._id
         if (!itemId) return null
 
         return {
           id: itemId,
+          itemId: itemId,
           name: item.name || item.foodName || "Item",
           price: Number(item.price) || 0,
           image: item.image || "",
@@ -524,6 +567,9 @@ export default function Orders() {
           isVeg: item.isVeg !== false,
           quantity: Math.max(1, Number(item.quantity) || 1),
           reorderIndex: index,
+          variantId: item.variantId || "",
+          variantName: item.variantName || "",
+          variantPrice: Number(item.variantPrice || item.price || 0),
         }
       })
       .filter(Boolean)
@@ -819,7 +865,7 @@ Order again from this restaurant in the ${companyName} app.`
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pb-10 font-sans">
+    <div className={`min-h-screen bg-gray-50 dark:bg-slate-950 pb-10 font-sans ${ratingModal.open ? "h-screen overflow-hidden" : ""}`}>
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 p-4 flex items-center shadow-sm sticky top-0 z-10 border-b border-gray-100 dark:border-slate-800">
         <button
@@ -1225,9 +1271,7 @@ Order again from this restaurant in the ${companyName} app.`
               </div>
               <p className="text-sm font-bold text-black/90">{ratingModal.order.restaurant}</p>
               <p className="text-xs text-black/80 mt-0.5 font-semibold">
-                Order #{String(ratingModal.order.orderId || ratingModal.order.order_id || ratingModal.order.displayOrderId || ratingModal.order.id || ratingModal.order._id || "").startsWith("FOD-")
-                  ? (ratingModal.order.orderId || ratingModal.order.order_id || ratingModal.order.displayOrderId || ratingModal.order.id || ratingModal.order._id)
-                  : `FOD-${String(ratingModal.order.orderId || ratingModal.order.order_id || ratingModal.order.displayOrderId || ratingModal.order.id || ratingModal.order._id || "").replace(/^ORD-/, "").slice(-6).toUpperCase()}`}
+                Order #{formatOrderId(ratingModal.order.orderId || ratingModal.order.order_id || ratingModal.order.displayOrderId || ratingModal.order.id || ratingModal.order._id)}
               </p>
             </div>
 

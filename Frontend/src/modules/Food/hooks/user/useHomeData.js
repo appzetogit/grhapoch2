@@ -45,7 +45,13 @@ export const useHomeData = (location, zoneId) => {
         _ts: Date.now(),
         ...(filters.sortBy && { sortBy: filters.sortBy }),
         ...(filters.cuisine && { cuisine: filters.cuisine }),
-        ...(zoneId && { zoneId })
+        ...(zoneId && { zoneId }),
+        // Pass user location so backend applies the userVisibilityRadius filter
+        ...(location?.latitude && location?.longitude && {
+          lat: location.latitude,
+          lng: location.longitude,
+        }),
+        ...(location?.city && { city: location.city }),
       };
       const res = await restaurantAPI.getRestaurants(params);
       if (res.data?.success) {

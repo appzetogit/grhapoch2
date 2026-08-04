@@ -57,6 +57,10 @@ const businessSettingsSchema = new mongoose.Schema(
         },
         adBannerDays: { type: Number, default: 30 },
         adBannerPrice: { type: Number, default: 2000 },
+        userAdBannerDays: { type: Number, default: 30 },
+        userAdBannerPrice: { type: Number, default: 2000 },
+        restaurantAdBannerDays: { type: Number, default: 30 },
+        restaurantAdBannerPrice: { type: Number, default: 2000 },
         adBannerDailyPrice: { type: Number, default: 100 },
         adBannerMonthlyPrice: { type: Number, default: 2500 },
         /**

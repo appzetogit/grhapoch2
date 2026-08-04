@@ -24,6 +24,7 @@ import { Badge } from "@food/components/ui/badge";
 import { Card, CardContent } from "@food/components/ui/card";
 import { toast } from "sonner";
 import { initRazorpayPayment } from "@food/utils/razorpay";
+import { ImageSourcePicker } from "@food/components/ImageSourcePicker";
 
 export default function AdCampaignManager() {
   const location = useLocation();
@@ -45,8 +46,24 @@ export default function AdCampaignManager() {
   
   // Form states
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Lock body & html scroll when creation modal is open
+  useEffect(() => {
+    if (showCreateModal) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [showCreateModal]);
   
   const [formData, setFormData] = useState({
     title: "",
@@ -319,7 +336,7 @@ export default function AdCampaignManager() {
   const filteredAdsList = getFilteredAds();
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-black ${isRestaurant ? "pb-24" : "pb-12"}`}>
+    <div className={`min-h-screen bg-gray-50 dark:bg-black ${isRestaurant ? "pb-24" : "pb-12"} ${showCreateModal ? "h-screen overflow-hidden" : ""}`}>
       
       {/* Sticky Header */}
       <div className="sticky top-0 z-40 border-b border-slate-200/80 dark:border-gray-800 bg-white/95 dark:bg-black/95 backdrop-blur px-4 py-3.5 flex items-center justify-between">
@@ -557,7 +574,7 @@ export default function AdCampaignManager() {
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Banner Image (Quality ratio 16:9 recommended)</label>
                 <div 
-                  onClick={() => !creating && fileInputRef.current?.click()}
+                  onClick={() => !creating && setShowImagePicker(true)}
                   className="border-2 border-dashed border-slate-300 dark:border-gray-700 rounded-2xl h-36 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors relative overflow-hidden bg-slate-50/50 dark:bg-zinc-900/50"
                 >
                   {imagePreview ? (
@@ -584,6 +601,18 @@ export default function AdCampaignManager() {
                   accept="image/*"
                   className="hidden"
                   disabled={creating}
+                />
+                <ImageSourcePicker
+                  isOpen={showImagePicker}
+                  onClose={() => setShowImagePicker(false)}
+                  onFileSelect={(file) => {
+                    setSelectedFile(file);
+                    setImagePreview(URL.createObjectURL(file));
+                  }}
+                  title="Upload Banner"
+                  description="Select source for the banner image"
+                  fileNamePrefix={isRestaurant ? "restaurant-ad-banner" : "user-ad-banner"}
+                  galleryInputRef={fileInputRef}
                 />
               </div>
 

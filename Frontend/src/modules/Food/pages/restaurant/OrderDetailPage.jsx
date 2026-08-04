@@ -30,6 +30,36 @@ const toNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const formatOrderId = (orderId, mongoId) => {
+  const idStr = String(orderId || "").trim();
+  const mIdStr = String(mongoId || "").trim();
+  const primaryId = idStr || mIdStr;
+  
+  if (!primaryId) return "FOD-ORDER";
+  
+  if (primaryId.startsWith("FOD-")) {
+    const hexPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(hexPart)) {
+      return `FOD-${hexPart.slice(-6).toUpperCase()}`;
+    }
+    return primaryId;
+  }
+  
+  if (primaryId.startsWith("ORD-")) {
+    const ordPart = primaryId.slice(4);
+    if (/^[a-f0-9]{24}$/i.test(ordPart)) {
+      return `FOD-${ordPart.slice(-6).toUpperCase()}`;
+    }
+    return `FOD-${ordPart}`;
+  }
+  
+  if (/^[a-f0-9]{24}$/i.test(primaryId)) {
+    return `FOD-${primaryId.slice(-6).toUpperCase()}`;
+  }
+  
+  return primaryId.length > 15 ? `FOD-${primaryId.slice(-6).toUpperCase()}` : `FOD-${primaryId}`;
+};
+
 export default function OrderDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -68,7 +98,7 @@ export default function OrderDetailPage() {
 
   const handleCopyId = (e) => {
     if (e) e.stopPropagation()
-    const orderId = order?.orderId || order?.order_id || id
+    const orderId = formatOrderId(order?.orderId || order?.order_id || id, order?._id || id)
     navigator.clipboard.writeText(orderId)
     toast.success("Order ID copied")
   }
@@ -163,17 +193,30 @@ export default function OrderDetailPage() {
               <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-[0.05em] border ${getStatusColor(status)}`}>
                 {status.replace(/_/g, ' ').toUpperCase()}
               </span>
-              {(order.payment?.method || order.paymentMethod) && (
-                <span className="px-2.5 py-1 rounded-lg text-[9px] font-black tracking-[0.05em] bg-gray-50 text-gray-600 border border-gray-100">
-                  {String(order.payment?.method || order.paymentMethod).replace(/_/g, ' ').toUpperCase()}
-                </span>
-              )}
+              {(order.payment?.method || order.paymentMethod) && (() => {
+                const raw = String(order.payment?.method || order.paymentMethod || "").toLowerCase().trim();
+                const label =
+                  raw === "cash" ? "💵 Cash on Delivery" :
+                  raw === "wallet" ? "👛 Wallet" :
+                  raw === "razorpay_qr" ? "📷 Razorpay QR" :
+                  raw === "razorpay" ? "💳 Razorpay (Online)" :
+                  raw.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                const color =
+                  raw === "cash" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                  raw === "wallet" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                  "bg-emerald-50 text-emerald-700 border-emerald-200";
+                return (
+                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-[0.05em] border ${color}`}>
+                    {label}
+                  </span>
+                );
+              })()}
             </div>
             <button 
               onClick={handleCopyId}
               className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100 active:scale-95 transition-all"
             >
-              <span className="text-[10px] font-black font-mono text-gray-600">#{order.orderId || order.order_id || id}</span>
+              <span className="text-[10px] font-black font-mono text-gray-600">#{formatOrderId(order.orderId || order.order_id || id, order._id || id)}</span>
               <Copy className="w-3 h-3" />
             </button>
           </div>
@@ -240,7 +283,12 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <div className="flex justify-between items-start gap-2">
-                    <p className="text-xs font-black text-gray-900 leading-tight pr-2">{item.name}</p>
+                    <p className="text-xs font-black text-gray-900 leading-tight pr-2">
+                      {item.name}
+                      {item.variantName && (
+                        <span className="text-gray-400 font-medium"> ({item.variantName})</span>
+                      )}
+                    </p>
                     <p className="text-xs font-black text-gray-900 whitespace-nowrap">{formatMoney(item.price * item.quantity)}</p>
                   </div>
                   <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-tighter">

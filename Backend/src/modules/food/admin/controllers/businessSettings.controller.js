@@ -189,7 +189,24 @@ export async function updateOrderAcceptanceSettings(req, res, next) {
 export async function updateBusinessSettings(req, res, next) {
     try {
         const data = req.body.data ? JSON.parse(req.body.data) : {};
-        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, adBannerDays, adBannerPrice, deliveryBoyRadius, userVisibilityRadius } = data;
+        const {
+            companyName,
+            email,
+            phoneCountryCode,
+            phoneNumber,
+            address,
+            state,
+            pincode,
+            region,
+            adBannerDays,
+            adBannerPrice,
+            userAdBannerDays,
+            userAdBannerPrice,
+            restaurantAdBannerDays,
+            restaurantAdBannerPrice,
+            deliveryBoyRadius,
+            userVisibilityRadius
+        } = data;
 
         // Validation
         if (!companyName || companyName.trim().length < 2 || companyName.trim().length > 50) {
@@ -220,6 +237,30 @@ export async function updateBusinessSettings(req, res, next) {
             const price = Number(adBannerPrice);
             if (isNaN(price) || price < 0) {
                 return res.status(400).json({ success: false, message: 'Pricing charge cannot be negative' });
+            }
+        }
+        if (userAdBannerDays !== undefined) {
+            const days = Number(userAdBannerDays);
+            if (isNaN(days) || days <= 0) {
+                return res.status(400).json({ success: false, message: 'User campaign duration must be a positive number (greater than 0)' });
+            }
+        }
+        if (userAdBannerPrice !== undefined) {
+            const price = Number(userAdBannerPrice);
+            if (isNaN(price) || price < 0) {
+                return res.status(400).json({ success: false, message: 'User pricing charge cannot be negative' });
+            }
+        }
+        if (restaurantAdBannerDays !== undefined) {
+            const days = Number(restaurantAdBannerDays);
+            if (isNaN(days) || days <= 0) {
+                return res.status(400).json({ success: false, message: 'Restaurant campaign duration must be a positive number (greater than 0)' });
+            }
+        }
+        if (restaurantAdBannerPrice !== undefined) {
+            const price = Number(restaurantAdBannerPrice);
+            if (isNaN(price) || price < 0) {
+                return res.status(400).json({ success: false, message: 'Restaurant pricing charge cannot be negative' });
             }
         }
         if (deliveryBoyRadius !== undefined) {
@@ -254,6 +295,10 @@ export async function updateBusinessSettings(req, res, next) {
         if (region) settings.region = region;
         if (adBannerDays !== undefined) settings.adBannerDays = Number(adBannerDays);
         if (adBannerPrice !== undefined) settings.adBannerPrice = Number(adBannerPrice);
+        if (userAdBannerDays !== undefined) settings.userAdBannerDays = Number(userAdBannerDays);
+        if (userAdBannerPrice !== undefined) settings.userAdBannerPrice = Number(userAdBannerPrice);
+        if (restaurantAdBannerDays !== undefined) settings.restaurantAdBannerDays = Number(restaurantAdBannerDays);
+        if (restaurantAdBannerPrice !== undefined) settings.restaurantAdBannerPrice = Number(restaurantAdBannerPrice);
         if (deliveryBoyRadius !== undefined) settings.deliveryBoyRadius = Number(deliveryBoyRadius);
         if (userVisibilityRadius !== undefined) settings.userVisibilityRadius = Number(userVisibilityRadius);
 

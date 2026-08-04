@@ -307,11 +307,44 @@ export default function UserOrderDetails() {
       // Get final Y position after table (autoTable adds lastAutoTable property)
       const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : yPos + (tableData.length * 8) + 20
 
-      // Total
+      // Total Breakdown Section
+      let currentY = finalY + 10
+      doc.setFontSize(10)
+      
+      // Item Total (Subtotal)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Item Total:', 145, currentY, { align: 'right' })
+      doc.text(`Rs. ${Number(pricing.subtotal || pricing.total || 0).toFixed(2)}`, 195, currentY, { align: 'right' })
+      currentY += 7
+
+      // GST (Govt. Taxes)
+      if (pricing.tax && pricing.tax > 0) {
+        doc.text('GST (govt. taxes):', 145, currentY, { align: 'right' })
+        doc.text(`Rs. ${Number(pricing.tax).toFixed(2)}`, 195, currentY, { align: 'right' })
+        currentY += 7
+      }
+
+      // Delivery Fee
+      if (pricing.deliveryFee !== undefined) {
+        doc.text('Delivery Fee:', 145, currentY, { align: 'right' })
+        const deliveryFeeText = pricing.deliveryFee === 0 ? "Free" : `Rs. ${Number(pricing.deliveryFee).toFixed(2)}`
+        doc.text(deliveryFeeText, 195, currentY, { align: 'right' })
+        currentY += 7
+      }
+
+      // Platform Fee
+      if (pricing.platformFee && pricing.platformFee > 0) {
+        doc.text('Platform Fee:', 145, currentY, { align: 'right' })
+        doc.text(`Rs. ${Number(pricing.platformFee).toFixed(2)}`, 195, currentY, { align: 'right' })
+        currentY += 7
+      }
+
+      // Grand Total
+      currentY += 2
       doc.setFontSize(12)
       doc.setFont('helvetica', 'bold')
-      doc.text('Total:', 145, finalY + 10, { align: 'right' })
-      doc.text(`Rs. ${Number(pricing.total || 0).toFixed(2)}`, 195, finalY + 10, { align: 'right' })
+      doc.text('Total:', 145, currentY, { align: 'right' })
+      doc.text(`Rs. ${Number(pricing.total || 0).toFixed(2)}`, 195, currentY, { align: 'right' })
 
       // Save PDF instantly
       const fileName = `Order_Summary_${orderIdDisplay}_${Date.now()}.pdf`
@@ -338,11 +371,12 @@ export default function UserOrderDetails() {
 
     const reorderItems = items
       .map((item, index) => {
-        const itemId = item.id || item.itemId || item._id
+        const itemId = item.itemId || item.id || item._id
         if (!itemId) return null
 
         return {
           id: itemId,
+          itemId: itemId,
           name: item.name || item.foodName || "Item",
           price: Number(item.price) || 0,
           image: item.image || "",
@@ -352,6 +386,9 @@ export default function UserOrderDetails() {
           isVeg: item.isVeg !== false,
           quantity: Math.max(1, Number(item.quantity || item.qty) || 1),
           reorderIndex: index,
+          variantId: item.variantId || "",
+          variantName: item.variantName || "",
+          variantPrice: Number(item.variantPrice || item.price || 0),
         }
       })
       .filter(Boolean)
@@ -484,13 +521,6 @@ export default function UserOrderDetails() {
               <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               <h3 className="font-semibold text-gray-800 dark:text-white">Bill Summary</h3>
             </div>
-            <button
-              type="button"
-              onClick={handleDownloadSummary}
-              className="w-7 h-7 rounded-full bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center text-[#EB590E] hover:bg-orange-100 dark:hover:bg-orange-900/40"
-            >
-              <Download className="w-4 h-4" />
-            </button>
           </div>
 
           <div className="p-4 space-y-2 text-sm">
@@ -530,12 +560,7 @@ export default function UserOrderDetails() {
                 ₹{Number(pricing.platformFee || 0).toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Subscription / other fees</span>
-              <span className="text-gray-800 dark:text-gray-200">
-                ₹{Number(pricing.subscriptionFee || 0).toFixed(2)}
-              </span>
-            </div>
+
 
             <div className="border-t border-gray-100 dark:border-zinc-800 my-2 pt-2 flex justify-between items-center">
               <span className="font-bold text-gray-800 dark:text-white">Paid</span>

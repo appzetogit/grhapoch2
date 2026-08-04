@@ -18,7 +18,13 @@ export const useDiningData = (location) => {
         diningAPI.getCategories(),
         diningAPI.getOfferBanners(),
         diningAPI.getStories(),
-        diningAPI.getRestaurants(location?.city ? { city: location.city } : {}),
+        diningAPI.getRestaurants({
+          ...(location?.city && { city: location.city }),
+          ...(location?.latitude && location?.longitude && {
+            lat: location.latitude,
+            lng: location.longitude,
+          }),
+        }),
         diningAPI.getBankOffers(),
         api.get('/food/hero-banners/dining/public').catch(() => ({ data: { success: false } }))
       ]);
@@ -35,7 +41,7 @@ export const useDiningData = (location) => {
     } finally {
       setLoading(false);
     }
-  }, [location?.city]);
+  }, [location?.city, location?.latitude, location?.longitude]);
 
   useEffect(() => {
     fetchDiningData();

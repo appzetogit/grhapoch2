@@ -68,7 +68,7 @@ const CartContext = createContext(defaultCartContext)
 const normalizeCartData = (rawCart) => {
   if (!Array.isArray(rawCart)) return []
 
-  return rawCart
+  const mapped = rawCart
     .filter((item) => item && typeof item === "object")
     .map((item, index) => {
       const parsedQuantity = Number(item.quantity)
@@ -155,6 +155,21 @@ const normalizeCartData = (rawCart) => {
         imageUrl: normalizedImage,
       }
     })
+
+  // Group by lineItemId to merge duplicates and sum quantities
+  const aggregated = []
+  const idMap = new Map()
+  for (const item of mapped) {
+    if (idMap.has(item.id)) {
+      const existing = idMap.get(item.id)
+      existing.quantity += item.quantity
+    } else {
+      const cloned = { ...item }
+      idMap.set(item.id, cloned)
+      aggregated.push(cloned)
+    }
+  }
+  return aggregated
 }
 
 const resolveCartEntryId = (items, itemId, variantId = "") => {
