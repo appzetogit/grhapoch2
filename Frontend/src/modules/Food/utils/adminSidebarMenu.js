@@ -207,6 +207,7 @@ export const adminSidebarMenu = [
     label: "BANNER SETTINGS",
     items: [
       { type: "link", label: "Landing Page Management", path: "/admin/food/hero-banner-management", icon: "Image" },
+      { type: "link", label: "Other Apps Management", path: "/admin/food/other-apps-management", icon: "Smartphone" },
       { type: "link", label: "Promotional Banners", path: "/admin/food/promotional-banner", icon: "Megaphone" },
 // { type: "link", label: "General Banners", path: "/admin/food/banners", icon: "Image" },
     ],

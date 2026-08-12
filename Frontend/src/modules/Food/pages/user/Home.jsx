@@ -99,6 +99,7 @@ import { getCachedSettings } from "@food/utils/businessSettings";
 import HomeHeader from "@food/components/user/home/HomeHeader";
 import QuickSection from "@food/components/user/home/QuickSection";
 import PromoRow from "@food/components/user/home/PromoRow";
+import OtherAppsSection from "@food/components/user/home/OtherAppsSection";
 import PromotionBannerCarousel from "@food/components/user/home/PromotionBannerCarousel";
 import AdBannersCarousel from "@food/components/user/home/AdBannersCarousel";
 import OutOfServiceScreen from "@food/components/user/OutOfServiceScreen";
@@ -3026,6 +3027,8 @@ export default function Home() {
           isVegMode={vegMode}
           toggleRef={vegModeToggleRef}
         />
+
+        <OtherAppsSection />
 
         <PromotionBannerCarousel />
 

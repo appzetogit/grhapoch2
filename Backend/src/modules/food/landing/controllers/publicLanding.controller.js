@@ -1,5 +1,6 @@
 import { getPublicGourmetRestaurants } from '../services/gourmet.service.js';
 import { getLandingSettings } from '../services/landingSettings.service.js';
+import { getPublicOtherApps } from '../services/otherApp.service.js';
 import { FoodHeroBanner } from '../models/heroBanner.model.js';
 import { FoodUnder250Banner } from '../models/under250Banner.model.js';
 import { FoodDiningBanner } from '../models/diningBanner.model.js';
@@ -149,3 +150,19 @@ export const getPublicLandingSettingsController = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getPublicOtherAppsController = async (req, res, next) => {
+    try {
+        const docs = await getPublicOtherApps();
+        const items = docs.map(({ sortOrder, iconUrl, ...rest }) => ({
+            ...rest,
+            iconUrl,
+            imageUrl: iconUrl,
+            order: sortOrder
+        }));
+        return sendResponse(res, 200, 'Other apps fetched', { items });
+    } catch (error) {
+        next(error);
+    }
+};
+

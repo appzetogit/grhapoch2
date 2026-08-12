@@ -68,14 +68,14 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      // Backend API (default 5000)
+      // Backend API (default 8181)
       '/api/v1': {
-        target: process.env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:5000',
+        target: process.env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:8181',
         changeOrigin: true,
       },
       // Uploaded images — same origin as frontend in dev (avoids CORP / NotSameOrigin)
       '/uploads': {
-        target: process.env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:5000',
+        target: process.env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:8181',
         changeOrigin: true,
       },
     },

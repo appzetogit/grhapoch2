@@ -95,11 +95,13 @@ export const initSocket = async (server) => {
     });
 
     if (config.redisEnabled && config.redisUrl) {
+        let pubClient = null;
+        let subClient = null;
         try {
             const { createAdapter } = await import('@socket.io/redis-adapter');
             const { createClient } = await import('redis');
-            const pubClient = createClient({ url: config.redisUrl });
-            const subClient = pubClient.duplicate();
+            pubClient = createClient({ url: config.redisUrl });
+            subClient = pubClient.duplicate();
             pubClient.on('error', (err) => logger.error(`Socket.IO Redis pub client: ${err.message}`));
             subClient.on('error', (err) => logger.error(`Socket.IO Redis sub client: ${err.message}`));
             await Promise.all([pubClient.connect(), subClient.connect()]);
@@ -107,6 +109,12 @@ export const initSocket = async (server) => {
             logger.info('Socket.IO Redis adapter attached for horizontal scaling');
         } catch (err) {
             logger.warn(`Socket.IO Redis adapter skipped (using in-memory): ${err.message}`);
+            if (pubClient) {
+                await pubClient.disconnect().catch(() => {});
+            }
+            if (subClient) {
+                await subClient.disconnect().catch(() => {});
+            }
         }
     }
 

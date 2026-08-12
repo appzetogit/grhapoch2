@@ -49,6 +49,14 @@ import {
     updateExploreMoreOrderController
 } from '../controllers/exploreIcon.controller.js';
 import {
+    listOtherAppsController,
+    createOtherAppController,
+    updateOtherAppController,
+    deleteOtherAppController,
+    toggleOtherAppStatusController,
+    updateOtherAppOrderController
+} from '../controllers/otherApp.controller.js';
+import {
     getPublicHeroBannersController,
     getPublicUnder250BannersController,
     getPublicDiningBannersController,
@@ -56,7 +64,8 @@ import {
     getPublicHomePromotionBannersController,
     getPublicGourmetController,
     getPublicLandingSettingsController,
-    getPublicTopBannersController
+    getPublicTopBannersController,
+    getPublicOtherAppsController
 } from '../controllers/publicLanding.controller.js';
 
 import {
@@ -155,17 +164,35 @@ router.delete('/hero-banners/gourmet/:id', deleteGourmetAdmin);
 router.patch('/hero-banners/gourmet/:id/order', updateGourmetOrderAdmin);
 router.patch('/hero-banners/gourmet/:id/status', toggleGourmetStatusAdmin);
 
+// Admin Other Apps management
+router.get('/other-apps', listOtherAppsController);
+router.post(
+    '/other-apps',
+    upload.single('image'),
+    createOtherAppController
+);
+router.delete('/other-apps/:id', deleteOtherAppController);
+router.patch('/other-apps/:id/status', toggleOtherAppStatusController);
+router.patch('/other-apps/:id/order', updateOtherAppOrderController);
+router.patch(
+    '/other-apps/:id',
+    upload.single('image'),
+    updateOtherAppController
+);
+
 // Public landing endpoints (Food user app)
 router.get('/hero-banners/public', getPublicHeroBannersController);
 router.get('/top-banners/public', getPublicTopBannersController);
 router.get('/hero-banners/under-250/public', getPublicUnder250BannersController);
 router.get('/hero-banners/dining/public', getPublicDiningBannersController);
 router.get('/explore-icons/public', getPublicExploreIconsController);
+router.get('/other-apps/public', getPublicOtherAppsController);
 router.get('/hero-banners/home-promotion/public', getPublicHomePromotionBannersController);
 router.get('/hero-banners/gourmet/public', getPublicGourmetController);
 router.get('/landing/settings/public', getPublicLandingSettingsController);
 // Admin landing settings
 router.get('/hero-banners/landing/settings', getAdminLandingSettingsController);
 router.patch('/hero-banners/landing/settings', updateAdminLandingSettingsController);
+
 
 export default router;

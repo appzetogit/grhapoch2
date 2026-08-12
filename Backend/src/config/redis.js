@@ -50,6 +50,10 @@ export const connectRedis = async () => {
         return redisClient;
     } catch (error) {
         logger.error(`Failed to connect to Redis: ${error.message}`);
+        if (redisClient) {
+            await redisClient.disconnect().catch(() => {});
+            redisClient = null;
+        }
         return null;
     }
 };
