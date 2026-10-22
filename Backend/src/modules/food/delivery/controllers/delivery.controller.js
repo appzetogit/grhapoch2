@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner, deleteDeliveryPartnerAccount } from '../services/delivery.service.js';
-import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
+import { createDeliveryCashDepositOrder, getDeliveryPartnerTips, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings, getDeliveryEmergencyHelp } from '../../admin/services/admin.service.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
 import { validateDeliveryRegisterDto, validateDeliveryProfileUpdateDto, validateDeliveryBankDetailsDto } from '../validators/delivery.validator.js';
@@ -214,6 +214,15 @@ export const getWalletController = async (req, res, next) => {
 
         const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
         return sendResponse(res, 200, 'Wallet fetched successfully', { wallet });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getTipsController = async (req, res, next) => {
+    try {
+        const data = await getDeliveryPartnerTips(req.user?.userId, { limit: req.query?.limit });
+        return sendResponse(res, 200, 'Tips fetched successfully', data);
     } catch (error) {
         next(error);
     }

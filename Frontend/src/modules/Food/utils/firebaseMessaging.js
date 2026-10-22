@@ -6,11 +6,12 @@ import fallbackNotificationSound from "@food/assets/audio/alert.mp3";
 const pushNotificationSoundPath = "/zomato_sms.mp3";
 
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: "",
-  messagingSenderId: "",
+  apiKey: "AIzaSyBXHhy9s_CuNdGNQ8ed8rload8McZg-BhU",
+  authDomain: "grhapoch-a141d.firebaseapp.com",
+  projectId: "grhapoch-a141d",
+  appId: "1:243919511808:web:2b7a13d1e4db26a64893e5",
+  messagingSenderId: "243919511808",
+  vapidKey: "BKKN4_bVBolEsSzYTahs2yhEk7DrCm2-G8WG8hW6hDaYww9TNVIhiV5txVw5c3Mm7teF3O3i-4UB5hpEcfkA54Q",
 };
 
 const tokenCachePrefix = "fcm_web_registered_token_";
@@ -536,14 +537,14 @@ async function getFirebasePublicEnv() {
           sanitize(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
         storageBucket: sanitize(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
         measurementId: sanitize(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID),
-        vapidKey: sanitize(import.meta.env.VITE_FIREBASE_VAPID_KEY),
+        vapidKey: sanitize(import.meta.env.VITE_FIREBASE_VAPID_KEY) || DEFAULT_FIREBASE_CONFIG.vapidKey,
       };
     } catch {
       return {
         ...DEFAULT_FIREBASE_CONFIG,
         storageBucket: sanitize(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
         measurementId: sanitize(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID),
-        vapidKey: sanitize(import.meta.env.VITE_FIREBASE_VAPID_KEY),
+        vapidKey: sanitize(import.meta.env.VITE_FIREBASE_VAPID_KEY) || DEFAULT_FIREBASE_CONFIG.vapidKey,
       };
     } finally {
       publicEnvPromise = null;
@@ -625,23 +626,37 @@ function setSavedToken(moduleName, token) {
   } catch {}
 }
 
+function updateLocalStorageUserFcmToken(moduleName, token, platform = "web") {
+  try {
+    if (typeof window === "undefined" || !token) return;
+    const userKey = `${moduleName}_user`;
+    const raw = localStorage.getItem(userKey);
+    if (!raw) return;
+    const user = JSON.parse(raw);
+    if (!user || typeof user !== "object") return;
+    const field = platform === "mobile" ? "fcmTokenMobile" : "fcmTokens";
+    const existing = Array.isArray(user[field]) ? user[field] : [];
+    if (!existing.includes(token)) {
+      user[field] = [...existing, token];
+      localStorage.setItem(userKey, JSON.stringify(user));
+    }
+  } catch (err) {
+    console.warn("Failed to update local storage user FCM token:", err);
+  }
+}
+
 async function saveTokenByModule(moduleName, token, platform = "web") {
   pushDebugLog(PUSH_DEBUG_PREFIX, "saveTokenByModule starting", { moduleName, platform, tokenPreview: `${token?.slice(0, 10)}...` });
   if (moduleName === "admin") {
     await adminAPI.saveFcmToken(token, platform);
-    return;
-  }
-  if (moduleName === "restaurant") {
+  } else if (moduleName === "restaurant") {
     await restaurantAPI.saveFcmToken(token, platform);
-    return;
-  }
-  if (moduleName === "delivery") {
+  } else if (moduleName === "delivery") {
     await deliveryAPI.saveFcmToken(token, platform);
-    return;
-  }
-  if (moduleName === "user") {
+  } else if (moduleName === "user") {
     await userAPI.saveFcmToken(token, { platform });
   }
+  updateLocalStorageUserFcmToken(moduleName, token, platform);
 }
 
 async function registerNativeWebViewFcmToken(moduleName) {
@@ -890,7 +905,18 @@ export async function registerWebPushForCurrentModule(pathname = window.location
   if (supportsBrowserPush) {
     const now = Date.now();
     const lastTs = Number(lastWebRegistrationAtByModule.get(moduleName) || 0);
-    if (now - lastTs < webRegistrationThrottleMs) {
+    const profileHasTokens = (() => {
+      try {
+        const raw = localStorage.getItem(`${moduleName}_user`);
+        if (!raw) return false;
+        const u = JSON.parse(raw);
+        return Array.isArray(u?.fcmTokens) && u.fcmTokens.length > 0;
+      } catch {
+        return false;
+      }
+    })();
+
+    if (now - lastTs < webRegistrationThrottleMs && profileHasTokens) {
       pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping web push registration (throttled)", {
         moduleName,
         sinceMs: now - lastTs,
@@ -947,7 +973,19 @@ export async function registerWebPushForCurrentModule(pathname = window.location
       });
 
       const lastSavedToken = getSavedToken(moduleName);
-      if (lastSavedToken === token) {
+      const userHasTokenInProfile = (() => {
+        try {
+          const raw = localStorage.getItem(`${moduleName}_user`);
+          if (!raw) return false;
+          const u = JSON.parse(raw);
+          const list = Array.isArray(u?.fcmTokens) ? u.fcmTokens : [];
+          return list.includes(token);
+        } catch {
+          return false;
+        }
+      })();
+
+      if (lastSavedToken === token && userHasTokenInProfile) {
         pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping backend sync for unchanged token", {
           moduleName,
         });

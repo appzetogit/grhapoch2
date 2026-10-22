@@ -32,7 +32,13 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         // 1. Total Earnings from Delivered Orders
         FoodOrder.aggregate([
             { $match: { 'dispatch.deliveryPartnerId': partnerId, orderStatus: 'delivered' } },
-            { $group: { _id: null, totalEarned: { $sum: { $ifNull: ['$riderEarning', 0] } } } }
+            {
+                $group: {
+                    _id: null,
+                    totalEarned: { $sum: { $add: [{ $ifNull: ['$riderEarning', 0] }, { $ifNull: ['$pricing.tip', 0] }] } },
+                    totalTips: { $sum: { $ifNull: ['$pricing.tip', 0] } }
+                }
+            }
         ]),
         // 2. Gross cash collected (COD orders)
         FoodOrder.aggregate([
@@ -84,6 +90,7 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
     ]);
 
     const aggTotalEarned = Number(earningsAgg?.[0]?.totalEarned) || 0;
+    const totalTips = Number(earningsAgg?.[0]?.totalTips) || 0;
     const grossCashCollected = Number(cashCollectedAgg?.[0]?.cashCollected) || 0;
     const totalDepositedCash = Number(cashDepositsAgg?.[0]?.depositedCash) || 0;
     const computedCashInHand = Math.max(0, grossCashCollected - totalDepositedCash);
@@ -118,7 +125,7 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
     const [ordersTx] = await Promise.all([
         FoodOrder.find({ 'dispatch.deliveryPartnerId': partnerId, orderStatus: 'delivered' })
             .sort({ createdAt: -1 })
-            .select('orderId riderEarning payment orderStatus createdAt')
+            .select('orderId riderEarning pricing.tip payment orderStatus createdAt')
             .limit(20)
             .lean(),
     ]);
@@ -127,10 +134,11 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         ...(ordersTx || []).map(o => ({
             id: o._id,
             type: 'payment',
-            amount: o.riderEarning || 0,
+            amount: (o.riderEarning || 0) + (o.pricing?.tip || 0),
             status: 'Completed',
             date: o.createdAt,
-            description: o.payment?.method === 'cash' ? 'COD delivery earning' : 'Online delivery earning',
+            description: (o.payment?.method === 'cash' ? 'COD delivery earning' : 'Online delivery earning') +
+                (o.pricing?.tip > 0 ? ` (incl. ₹${o.pricing.tip} tip)` : ''),
             orderId: o.orderId
         })),
         ...(withdrawalsList || []).map(w => ({
@@ -163,11 +171,46 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
         pendingWithdrawals, // In process
         lockedAmount: effectiveLockedAmount,
         totalEarned,
+        totalTips,
         totalBonus,
         totalCashLimit,
         availableCashLimit: Math.max(0, totalCashLimit - cashInHand),
         deliveryWithdrawalLimit,
         transactions: transactions.slice(0, 50)
+    };
+};
+
+/**
+ * Customer tips received by a delivery partner on delivered orders (100% passthrough).
+ */
+export const getDeliveryPartnerTips = async (deliveryPartnerId, { limit = 100 } = {}) => {
+    if (!deliveryPartnerId || !mongoose.Types.ObjectId.isValid(deliveryPartnerId)) {
+        throw new ValidationError('Invalid delivery partner ID');
+    }
+    const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
+    const match = { 'dispatch.deliveryPartnerId': partnerId, orderStatus: 'delivered', 'pricing.tip': { $gt: 0 } };
+
+    const [totalAgg, orders] = await Promise.all([
+        FoodOrder.aggregate([
+            { $match: match },
+            { $group: { _id: null, totalTips: { $sum: '$pricing.tip' }, count: { $sum: 1 } } }
+        ]),
+        FoodOrder.find(match)
+            .sort({ createdAt: -1 })
+            .limit(Math.min(Math.max(Number(limit) || 100, 1), 500))
+            .select('orderId pricing.tip createdAt deliveryState.deliveredAt')
+            .lean()
+    ]);
+
+    return {
+        totalTips: Number(totalAgg?.[0]?.totalTips) || 0,
+        tipCount: Number(totalAgg?.[0]?.count) || 0,
+        tips: (orders || []).map((o) => ({
+            id: o._id,
+            orderId: o.orderId || String(o._id),
+            amount: Number(o.pricing?.tip) || 0,
+            date: o.deliveryState?.deliveredAt || o.createdAt
+        }))
     };
 };
 

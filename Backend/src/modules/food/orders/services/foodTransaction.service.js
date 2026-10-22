@@ -127,6 +127,7 @@ export async function createInitialTransaction(order) {
     const platformFee = Number(order.pricing?.platformFee) || 0;
     const deliveryFee = Number(order.pricing?.deliveryFee) || 0;
     const tax = Number(order.pricing?.tax) || 0;
+    const tip = Number(order.pricing?.tip) || 0;
 
     let restaurantNet = subtotal + packagingFee - restaurantCommission;
     let platformNetProfit = platformFee + deliveryFee + restaurantCommission - riderShare;
@@ -182,6 +183,7 @@ export async function createInitialTransaction(order) {
             packagingFee: packagingFee,
             deliveryFee: deliveryFee,
             platformFee: platformFee,
+            tip: tip,
             restaurantCommission: restaurantCommission,
             discount: discount,
             couponCode: couponCode ? String(couponCode).toUpperCase() : null,
@@ -193,6 +195,7 @@ export async function createInitialTransaction(order) {
             restaurantShare: Math.max(0, restaurantNet),
             restaurantCommission: restaurantCommission,
             riderShare: riderShare,
+            riderTip: tip,
             platformNetProfit: platformNetProfit,
             taxAmount: tax,
             adminDiscountShare,

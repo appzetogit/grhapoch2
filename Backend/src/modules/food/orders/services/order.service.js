@@ -463,6 +463,7 @@ export async function createOrder(userId, dto) {
         items: dto.items || [],
         deliveryAddress,
         couponCode: dto.pricing?.couponCode || undefined,
+        tip: dto.pricing?.tip,
       },
       { at: orderAt, restaurant, skipAvailabilityCheck: true },
     );
@@ -474,6 +475,7 @@ export async function createOrder(userId, dto) {
       packagingFee: Number(pricingResult.pricing?.packagingFee) || 0,
       deliveryFee: Number(pricingResult.pricing?.deliveryFee) || 0,
       platformFee: Number(pricingResult.pricing?.platformFee) || 0,
+      tip: Number(pricingResult.pricing?.tip) || 0,
       discount: Number(pricingResult.pricing?.discount) || 0,
       couponCode: pricingResult.pricing?.couponCode
         ? String(pricingResult.pricing.couponCode).trim().toUpperCase()

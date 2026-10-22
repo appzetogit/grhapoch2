@@ -92,7 +92,10 @@ const modelConfigMap = {
 const dedupeTargets = (targets = []) => {
     const map = new Map();
     for (const target of Array.isArray(targets) ? targets : []) {
-        const ownerType = String(target?.ownerType || '').trim().toUpperCase();
+        let ownerType = String(target?.ownerType || '').trim().toUpperCase();
+        if (ownerType === 'DELIVERY' || ownerType === 'DELIVERY_BOY' || ownerType === 'DELIVERYMAN') {
+            ownerType = 'DELIVERY_PARTNER';
+        }
         const ownerId = String(target?.ownerId || '').trim();
         if (!ownerType || !ownerId || !mongoose.Types.ObjectId.isValid(ownerId)) continue;
         map.set(`${ownerType}:${ownerId}`, {
@@ -126,12 +129,24 @@ const resolveCustomTargets = async ({ targets = [], targetIds = [] } = {}) => {
         throw new ValidationError('Please select at least one recipient for custom broadcast');
     }
 
-    const users = await FoodUser.find({ _id: { $in: ids }, isActive: true }).select('_id name phone email').lean();
-    return users.map((row) => ({
-        ownerType: 'USER',
-        ownerId: String(row._id),
-        ...buildUserLabel(row)
-    }));
+    const objectIds = ids.map((id) => toObjectId(id, 'targetId'));
+    const [users, restaurants, deliveryPartners] = await Promise.all([
+        FoodUser.find({ _id: { $in: objectIds }, isActive: true }).select('_id name phone email').lean(),
+        FoodRestaurant.find({ _id: { $in: objectIds }, status: 'approved' }).select('_id restaurantName ownerName ownerPhone ownerEmail').lean(),
+        FoodDeliveryPartner.find({ _id: { $in: objectIds }, status: { $in: ['approved', 'active'] } }).select('_id name phone email').lean()
+    ]);
+
+    const result = [
+        ...users.map((row) => ({ ownerType: 'USER', ownerId: String(row._id), ...buildUserLabel(row) })),
+        ...restaurants.map((row) => ({ ownerType: 'RESTAURANT', ownerId: String(row._id), ...buildRestaurantLabel(row) })),
+        ...deliveryPartners.map((row) => ({ ownerType: 'DELIVERY_PARTNER', ownerId: String(row._id), ...buildDeliveryLabel(row) }))
+    ];
+
+    if (!result.length) {
+        throw new ValidationError('None of the selected custom recipients were found');
+    }
+
+    return result;
 };
 
 const resolveTargets = async ({ targetType, targetIds = [], targets = [] } = {}) => {
@@ -223,9 +238,7 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
 
     const targetIds = resolvedTargets.map((target) => toObjectId(target.ownerId, 'targetId'));
 
-    const broadcastId = new mongoose.Types.ObjectId();
-    const broadcast = {
-        _id: broadcastId,
+    const [broadcast] = await BroadcastNotification.create([{
         title,
         message,
         targetType,
@@ -240,7 +253,19 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
         createdBy: toObjectId(adminId, 'createdBy'),
         targetCount: resolvedTargets.length,
         createdAt: new Date()
-    };
+    }]);
+
+    await createInboxNotifications({
+        notifications: resolvedTargets.map((target) =>
+            buildNotificationPayload({
+                title,
+                message,
+                link,
+                broadcastId: broadcast._id,
+                target
+            })
+        )
+    });
 
     await notifyOwnersSafely(
         resolvedTargets.map((target) => ({
@@ -267,13 +292,25 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
 };
 
 export const getBroadcastNotifications = async ({ page = 1, limit = 10 } = {}) => {
+    const { page: nextPage, limit: nextLimit, skip } = paginationMeta({ page, limit });
+    const [items, total] = await Promise.all([
+        BroadcastNotification.find({})
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(nextLimit)
+            .lean(),
+        BroadcastNotification.countDocuments({})
+    ]);
+
+    const totalPages = Math.ceil(total / nextLimit) || 1;
+
     return {
-        items: [],
+        items,
         pagination: {
-            page: 1,
-            limit,
-            total: 0,
-            totalPages: 1
+            page: nextPage,
+            limit: nextLimit,
+            total,
+            totalPages
         }
     };
 };

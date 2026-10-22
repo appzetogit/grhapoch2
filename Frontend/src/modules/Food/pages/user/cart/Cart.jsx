@@ -141,6 +141,7 @@ const buildEffectiveCartPricing = ({
   defaultAddress = null,
   restaurantData = null,
   appliedCoupon = null,
+  tip = 0,
 }) => {
   const subtotal =
     pricing?.subtotal ||
@@ -169,11 +170,12 @@ const buildEffectiveCartPricing = ({
       packagingFee: Number(pricing.packagingFee) || 0,
       deliveryFee: Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0,
       platformFee: Number.isFinite(serverPlatformFee) ? serverPlatformFee : 0,
+      tip: Number(pricing.tip) || 0,
       discount: Number.isFinite(serverDiscount) ? serverDiscount : 0,
       total: serverTotal,
       savings: Number.isFinite(Number(pricing.savings))
         ? Number(pricing.savings)
-        : Math.max(0, subtotal + (Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0) + (Number.isFinite(serverPlatformFee) ? serverPlatformFee : 0) + (Number.isFinite(serverTax) ? serverTax : 0) - serverTotal),
+        : Math.max(0, subtotal + (Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0) + (Number.isFinite(serverPlatformFee) ? serverPlatformFee : 0) + (Number.isFinite(serverTax) ? serverTax : 0) + (Number(pricing.tip) || 0) - serverTotal),
       couponCode: pricing?.couponCode || pricing?.appliedCoupon?.code || appliedCoupon?.code || "",
       deliveryFeeBreakdown: pricing?.deliveryFeeBreakdown || null,
       appliedCoupon: pricing?.appliedCoupon || appliedCoupon || null,
@@ -187,8 +189,8 @@ const buildEffectiveCartPricing = ({
     ? Math.max(0, Math.min(Math.floor(Number(appliedCoupon.discount) || 0), subtotal))
     : 0
   const gstCharges = Math.round(Math.max(0, subtotal - discount) * (Number(feeSettings.gstRate || 0) / 100))
-  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges
-  const total = Math.max(0, subtotal + deliveryFee + platformFee + gstCharges - discount)
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + tip
+  const total = Math.max(0, subtotal + deliveryFee + platformFee + gstCharges + tip - discount)
   const savings = Math.max(0, totalBeforeDiscount - total)
 
   return {
@@ -197,6 +199,7 @@ const buildEffectiveCartPricing = ({
     packagingFee: 0,
     deliveryFee,
     platformFee,
+    tip,
     discount,
     total,
     savings,
@@ -250,6 +253,9 @@ export default function Cart() {
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [couponCode, setCouponCode] = useState("")
   const [manualCouponCode, setManualCouponCode] = useState("")
+  const [tipAmount, setTipAmount] = useState(0)
+  const [customTipInput, setCustomTipInput] = useState("")
+  const [showCustomTip, setShowCustomTip] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("razorpay")
   const [showPaymentSheet, setShowPaymentSheet] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
@@ -1129,6 +1135,7 @@ export default function Cart() {
           restaurantId: resolvedRestaurantId,
           deliveryAddress: pricingAddress,
           couponCode: resolvedCouponCode,
+          tip: tipAmount,
         }
 
         if (scheduledOrderAt) {
@@ -1223,7 +1230,7 @@ export default function Cart() {
     }
 
     calculatePricing()
-  }, [cart, pricingAddress, appliedCoupon, couponCode, restaurantId, restaurantData, scheduledOrderAt, replaceCart])
+  }, [cart, pricingAddress, appliedCoupon, couponCode, tipAmount, restaurantId, restaurantData, scheduledOrderAt, replaceCart])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1322,8 +1329,9 @@ export default function Cart() {
         defaultAddress: pricingAddress,
         restaurantData,
         appliedCoupon,
+        tip: tipAmount,
       }),
-    [cart, pricing, feeSettings, pricingAddress, restaurantData, appliedCoupon],
+    [cart, pricing, feeSettings, pricingAddress, restaurantData, appliedCoupon, tipAmount],
   )
   const subtotal = effectivePricing.subtotal
   const deliveryFee = effectivePricing.deliveryFee
@@ -1337,7 +1345,8 @@ export default function Cart() {
   const platformFee = effectivePricing.platformFee
   const gstCharges = effectivePricing.tax
   const discount = effectivePricing.discount
-  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges
+  const tip = effectivePricing.tip || 0
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + tip
   const total = effectivePricing.total
   const savings = effectivePricing.savings
   const itemDiscountAmount = appliedCoupon && discount > 0 ? discount : 0
@@ -1593,7 +1602,8 @@ export default function Cart() {
           items,
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: pricingAddress,
-          couponCode: coupon.code
+          couponCode: coupon.code,
+          tip: tipAmount
         })
 
         const pricingData = response?.data?.data?.pricing
@@ -1654,7 +1664,8 @@ export default function Cart() {
         items,
         restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
         deliveryAddress: pricingAddress,
-        couponCode: inputCode
+        couponCode: inputCode,
+        tip: tipAmount
       })
 
       const pricingData = response?.data?.data?.pricing
@@ -1713,7 +1724,8 @@ export default function Cart() {
           items,
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: pricingAddress,
-          couponCode: null
+          couponCode: null,
+          tip: tipAmount
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -1953,6 +1965,7 @@ export default function Cart() {
         restaurantId: finalRestaurantId,
         deliveryAddress: pricingAddress,
         couponCode: resolvedCouponCode,
+        tip: tipAmount,
       }
       if (isScheduled) {
         calculatePayload.scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
@@ -1982,6 +1995,7 @@ export default function Cart() {
         deliveryFee: Number(serverPricing.deliveryFee) || 0,
         tax: Number(serverPricing.tax) || 0,
         platformFee: Number(serverPricing.platformFee) || 0,
+        tip: Number(serverPricing.tip) || 0,
         discount: Number(serverPricing.discount) || 0,
         total: Number(serverPricing.total),
         couponCode: serverPricing.couponCode || serverPricing.appliedCoupon?.code || resolvedCouponCode || null,
@@ -2884,6 +2898,80 @@ export default function Cart() {
                   </div>
                 )}
               </div>
+{/* Tip your delivery partner */}
+              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Tip your delivery partner</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  100% of the tip goes to your delivery partner. Optional.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[20, 30, 50].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        setShowCustomTip(false)
+                        setCustomTipInput("")
+                        setTipAmount(tipAmount === amt ? 0 : amt)
+                      }}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                        tipAmount === amt && !showCustomTip
+                          ? "bg-[#EB590E] border-[#EB590E] text-white"
+                          : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                      }`}
+                    >
+                      {RUPEE_SYMBOL}{amt}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomTip((v) => !v)
+                      if (showCustomTip) {
+                        setCustomTipInput("")
+                        setTipAmount(0)
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                      showCustomTip
+                        ? "bg-[#EB590E] border-[#EB590E] text-white"
+                        : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                    }`}
+                  >
+                    Other
+                  </button>
+                  {tipAmount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTipAmount(0)
+                        setCustomTipInput("")
+                        setShowCustomTip(false)
+                      }}
+                      className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 underline"
+                    >
+                      Remove tip
+                    </button>
+                  )}
+                </div>
+                {showCustomTip && (
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max="500"
+                    value={customTipInput}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 3)
+                      const next = Math.min(Number(raw) || 0, 500)
+                      setCustomTipInput(raw === "" ? "" : String(next))
+                      setTipAmount(next)
+                    }}
+                    placeholder="Enter tip amount (max 500)"
+                    className="mt-3 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111111] px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#EB590E]"
+                  />
+                )}
+              </div>
 {/* Bill Details */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <button
@@ -2946,6 +3034,12 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
                     </div>
+                    {tip > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Delivery Partner Tip</span>
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{tip.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-base font-bold pt-3 mt-1 border-t border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white">
                       <span>To Pay</span>
                       <span>{RUPEE_SYMBOL}{total.toFixed(2)}</span>

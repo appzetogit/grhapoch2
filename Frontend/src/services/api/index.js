@@ -1997,6 +1997,8 @@ const getDeliveryMeOnce = () => {
 export const deliveryAPI = {
   deleteAccount: () => apiClient.delete('/food/delivery/profile/account', { contextModule: 'delivery' }),
   getWallet: () => apiClient.get('/food/delivery/wallet', { contextModule: 'delivery' }),
+  /** GET /food/delivery/tips - customer tips received (100% passthrough) */
+  getTips: (params = {}) => apiClient.get('/food/delivery/tips', { params, contextModule: 'delivery' }),
   sendOTP: (phone, _purpose = "login") => {
     if (!phone) return Promise.reject(new Error("Phone is required"));
     return authService.requestDeliveryOtp(phone);
