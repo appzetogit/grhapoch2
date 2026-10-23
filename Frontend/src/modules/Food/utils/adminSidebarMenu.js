@@ -168,6 +168,13 @@ export const adminSidebarMenu = [
   },
   {
     type: "section",
+    label: "DONATIONS",
+    items: [
+      { type: "link", label: "Donations", path: "/admin/food/donations", icon: "Gift" },
+    ],
+  },
+  {
+    type: "section",
     label: "HELP & SUPPORT",
     items: [
       { type: "link", label: "User Feedback", path: "/admin/food/contact-messages", icon: "Mail" },
