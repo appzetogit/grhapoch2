@@ -464,6 +464,7 @@ export async function createOrder(userId, dto) {
         deliveryAddress,
         couponCode: dto.pricing?.couponCode || undefined,
         tip: dto.pricing?.tip,
+        donation: Number(dto.pricing?.donation) || 0,
       },
       { at: orderAt, restaurant, skipAvailabilityCheck: true },
     );
@@ -476,6 +477,7 @@ export async function createOrder(userId, dto) {
       deliveryFee: Number(pricingResult.pricing?.deliveryFee) || 0,
       platformFee: Number(pricingResult.pricing?.platformFee) || 0,
       tip: Number(pricingResult.pricing?.tip) || 0,
+      donation: Number(pricingResult.pricing?.donation) || 0,
       discount: Number(pricingResult.pricing?.discount) || 0,
       couponCode: pricingResult.pricing?.couponCode
         ? String(pricingResult.pricing.couponCode).trim().toUpperCase()
@@ -527,6 +529,7 @@ export async function createOrder(userId, dto) {
     const platformProfit =
       (Number.isFinite(normalizedPricing.deliveryFee) ? normalizedPricing.deliveryFee : 0) +
       (Number.isFinite(normalizedPricing.platformFee) ? normalizedPricing.platformFee : 0) +
+      (Number.isFinite(normalizedPricing.donation) ? normalizedPricing.donation : 0) +
       restaurantCommission -
       riderEarning;
 
