@@ -128,9 +128,10 @@ export async function createInitialTransaction(order) {
     const deliveryFee = Number(order.pricing?.deliveryFee) || 0;
     const tax = Number(order.pricing?.tax) || 0;
     const tip = Number(order.pricing?.tip) || 0;
+    const donation = Number(order.pricing?.donation) || 0;
 
     let restaurantNet = subtotal + packagingFee - restaurantCommission;
-    let platformNetProfit = platformFee + deliveryFee + restaurantCommission - riderShare;
+    let platformNetProfit = platformFee + deliveryFee + donation + restaurantCommission - riderShare;
     let adminDiscountShare = 0;
     let restaurantDiscountShare = 0;
     let discountAdminBearPercentage = 0;
@@ -184,6 +185,7 @@ export async function createInitialTransaction(order) {
             deliveryFee: deliveryFee,
             platformFee: platformFee,
             tip: tip,
+            donation: donation,
             restaurantCommission: restaurantCommission,
             discount: discount,
             couponCode: couponCode ? String(couponCode).toUpperCase() : null,
@@ -196,6 +198,7 @@ export async function createInitialTransaction(order) {
             restaurantCommission: restaurantCommission,
             riderShare: riderShare,
             riderTip: tip,
+            donationAmount: donation,
             platformNetProfit: platformNetProfit,
             taxAmount: tax,
             adminDiscountShare,

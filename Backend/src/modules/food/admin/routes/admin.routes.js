@@ -277,6 +277,9 @@ router.delete('/feedback-experiences/:id', feedbackExperienceController.deleteFe
 router.get('/fee-settings', adminController.getFeeSettings);
 router.put('/fee-settings', adminController.createOrUpdateFeeSettings);
 
+// ----- Donations -----
+router.get('/donations', adminController.getDonationReport);
+
 // ----- Referral Settings -----
 router.get('/referral-settings', adminController.getReferralSettings);
 router.put('/referral-settings', adminController.createOrUpdateReferralSettings);

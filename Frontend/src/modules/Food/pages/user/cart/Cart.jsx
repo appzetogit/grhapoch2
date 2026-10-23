@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate, useLocation } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, CheckCircle2, MessageCircle, Send, Mail, Copy } from "lucide-react"
+import { Heart, Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, CheckCircle2, MessageCircle, Send, Mail, Copy } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -134,6 +134,17 @@ const normalizeRestaurantForPricing = (restaurant) => {
   }
 }
 
+// Preset donation amounts from fee settings (empty when donations are disabled).
+// Falls back to the legacy single `donationAmount`.
+const getDonationOptionsFromSettings = (raw = {}) => {
+  if (raw?.donationEnabled !== true) return []
+  const source = Array.isArray(raw.donationAmounts) && raw.donationAmounts.length > 0
+    ? raw.donationAmounts
+    : [raw.donationAmount]
+  return [...new Set(source.map((v) => Math.floor(Number(v))).filter((n) => Number.isFinite(n) && n > 0))]
+    .sort((a, b) => a - b)
+}
+
 const buildEffectiveCartPricing = ({
   cart = [],
   pricing = null,
@@ -142,6 +153,7 @@ const buildEffectiveCartPricing = ({
   restaurantData = null,
   appliedCoupon = null,
   tip = 0,
+  donate = 0,
 }) => {
   const subtotal =
     pricing?.subtotal ||
@@ -171,11 +183,12 @@ const buildEffectiveCartPricing = ({
       deliveryFee: Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0,
       platformFee: Number.isFinite(serverPlatformFee) ? serverPlatformFee : 0,
       tip: Number(pricing.tip) || 0,
+      donation: Number(pricing.donation) || 0,
       discount: Number.isFinite(serverDiscount) ? serverDiscount : 0,
       total: serverTotal,
       savings: Number.isFinite(Number(pricing.savings))
         ? Number(pricing.savings)
-        : Math.max(0, subtotal + (Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0) + (Number.isFinite(serverPlatformFee) ? serverPlatformFee : 0) + (Number.isFinite(serverTax) ? serverTax : 0) + (Number(pricing.tip) || 0) - serverTotal),
+        : Math.max(0, subtotal + (Number.isFinite(serverDeliveryFee) ? serverDeliveryFee : 0) + (Number.isFinite(serverPlatformFee) ? serverPlatformFee : 0) + (Number.isFinite(serverTax) ? serverTax : 0) + (Number(pricing.tip) || 0) + (Number(pricing.donation) || 0) - serverTotal),
       couponCode: pricing?.couponCode || pricing?.appliedCoupon?.code || appliedCoupon?.code || "",
       deliveryFeeBreakdown: pricing?.deliveryFeeBreakdown || null,
       appliedCoupon: pricing?.appliedCoupon || appliedCoupon || null,
@@ -188,9 +201,13 @@ const buildEffectiveCartPricing = ({
   const discount = appliedCoupon
     ? Math.max(0, Math.min(Math.floor(Number(appliedCoupon.discount) || 0), subtotal))
     : 0
+  const donation =
+    Array.isArray(feeSettings.donationOptions) && feeSettings.donationOptions.includes(Number(donate))
+      ? Number(donate)
+      : 0
   const gstCharges = Math.round(Math.max(0, subtotal - discount) * (Number(feeSettings.gstRate || 0) / 100))
-  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + tip
-  const total = Math.max(0, subtotal + deliveryFee + platformFee + gstCharges + tip - discount)
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + tip + donation
+  const total = Math.max(0, subtotal + deliveryFee + platformFee + gstCharges + tip + donation - discount)
   const savings = Math.max(0, totalBeforeDiscount - total)
 
   return {
@@ -200,6 +217,7 @@ const buildEffectiveCartPricing = ({
     deliveryFee,
     platformFee,
     tip,
+    donation,
     discount,
     total,
     savings,
@@ -254,6 +272,7 @@ export default function Cart() {
   const [couponCode, setCouponCode] = useState("")
   const [manualCouponCode, setManualCouponCode] = useState("")
   const [tipAmount, setTipAmount] = useState(0)
+  const [donationChoice, setDonationChoice] = useState(0)
   const [customTipInput, setCustomTipInput] = useState("")
   const [showCustomTip, setShowCustomTip] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("razorpay")
@@ -368,6 +387,8 @@ export default function Cart() {
     deliveryFeeRanges: [],
     platformFee: 0,
     gstRate: 0,
+    donationEnabled: false,
+    donationOptions: [],
   })
 
   // Prevent background scrolling when payment options sheet is open
@@ -1136,6 +1157,7 @@ export default function Cart() {
           deliveryAddress: pricingAddress,
           couponCode: resolvedCouponCode,
           tip: tipAmount,
+          donation: donationChoice,
         }
 
         if (scheduledOrderAt) {
@@ -1230,7 +1252,7 @@ export default function Cart() {
     }
 
     calculatePricing()
-  }, [cart, pricingAddress, appliedCoupon, couponCode, tipAmount, restaurantId, restaurantData, scheduledOrderAt, replaceCart])
+  }, [cart, pricingAddress, appliedCoupon, couponCode, tipAmount, donationChoice, restaurantId, restaurantData, scheduledOrderAt, replaceCart])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1301,6 +1323,8 @@ export default function Cart() {
         deliveryFeeRanges: raw.deliveryFeeRanges || [],
         platformFee: raw.platformFee ?? 0,
         gstRate: raw.gstRate ?? 0,
+        donationEnabled: raw.donationEnabled === true,
+        donationOptions: getDonationOptionsFromSettings(raw),
       })
     }
 
@@ -1320,6 +1344,13 @@ export default function Cart() {
     return () => window.removeEventListener("businessSettingsUpdated", handleSettingsUpdate)
   }, [])
 
+  // Drop a selected donation if the admin removed that preset.
+  useEffect(() => {
+    if (donationChoice > 0 && !feeSettings.donationOptions?.includes(donationChoice)) {
+      setDonationChoice(0)
+    }
+  }, [feeSettings.donationOptions, donationChoice])
+
   const effectivePricing = useMemo(
     () =>
       buildEffectiveCartPricing({
@@ -1330,8 +1361,9 @@ export default function Cart() {
         restaurantData,
         appliedCoupon,
         tip: tipAmount,
+        donate: donationChoice,
       }),
-    [cart, pricing, feeSettings, pricingAddress, restaurantData, appliedCoupon, tipAmount],
+    [cart, pricing, feeSettings, pricingAddress, restaurantData, appliedCoupon, tipAmount, donationChoice],
   )
   const subtotal = effectivePricing.subtotal
   const deliveryFee = effectivePricing.deliveryFee
@@ -1346,7 +1378,8 @@ export default function Cart() {
   const gstCharges = effectivePricing.tax
   const discount = effectivePricing.discount
   const tip = effectivePricing.tip || 0
-  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + tip
+  const donation = effectivePricing.donation || 0
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + tip + donation
   const total = effectivePricing.total
   const savings = effectivePricing.savings
   const itemDiscountAmount = appliedCoupon && discount > 0 ? discount : 0
@@ -1603,7 +1636,8 @@ export default function Cart() {
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: pricingAddress,
           couponCode: coupon.code,
-          tip: tipAmount
+          tip: tipAmount,
+          donation: donationChoice
         })
 
         const pricingData = response?.data?.data?.pricing
@@ -1665,7 +1699,8 @@ export default function Cart() {
         restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
         deliveryAddress: pricingAddress,
         couponCode: inputCode,
-        tip: tipAmount
+        tip: tipAmount,
+        donation: donationChoice
       })
 
       const pricingData = response?.data?.data?.pricing
@@ -1725,7 +1760,8 @@ export default function Cart() {
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: pricingAddress,
           couponCode: null,
-          tip: tipAmount
+          tip: tipAmount,
+          donation: donationChoice
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -1963,6 +1999,7 @@ export default function Cart() {
       const calculatePayload = {
         items: orderItems,
         restaurantId: finalRestaurantId,
+        donation: donationChoice,
         deliveryAddress: pricingAddress,
         couponCode: resolvedCouponCode,
         tip: tipAmount,
@@ -1993,6 +2030,7 @@ export default function Cart() {
       const orderPricing = {
         subtotal: Number(serverPricing.subtotal) || subtotal,
         deliveryFee: Number(serverPricing.deliveryFee) || 0,
+        donation: Number(serverPricing.donation) || 0,
         tax: Number(serverPricing.tax) || 0,
         platformFee: Number(serverPricing.platformFee) || 0,
         tip: Number(serverPricing.tip) || 0,
@@ -2972,6 +3010,61 @@ export default function Cart() {
                   />
                 )}
               </div>
+{/* Donation */}
+              {feeSettings.donationOptions?.length > 0 && (
+                <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-[#FFF2EB] dark:bg-[#EB590E]/15 flex items-center justify-center">
+                      <Heart className="h-5 w-5 text-[#EB590E]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
+                        Add a donation
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Add a small amount to your order and make a difference. Optional.
+                      </p>
+                    </div>
+                    {donationChoice > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setDonationChoice(0)}
+                        className="text-[#EB590E] text-xs font-semibold px-1 hover:underline flex-shrink-0"
+                      >
+                        REMOVE
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {feeSettings.donationOptions.map((amt) => {
+                      const selected = donationChoice === amt
+                      return (
+                        <button
+                          key={amt}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setDonationChoice(selected ? 0 : amt)}
+                          className={`relative flex items-center justify-center gap-1 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
+                            selected
+                              ? "bg-[#EB590E] border-[#EB590E] text-white shadow-sm"
+                              : "bg-white dark:bg-[#111111] border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 hover:border-[#EB590E]"
+                          }`}
+                        >
+                          {selected && <Check className="h-3.5 w-3.5" />}
+                          {RUPEE_SYMBOL}{amt}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {donationChoice > 0 && (
+                    <p className="mt-3 text-xs font-medium text-green-600 dark:text-green-400">
+                      Thank you! {RUPEE_SYMBOL}{donationChoice} will be added to your bill.
+                    </p>
+                  )}
+                </div>
+              )}
 {/* Bill Details */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <button
@@ -3034,6 +3127,12 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
                     </div>
+                    {donation > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Donation</span>
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{donation.toFixed(2)}</span>
+                      </div>
+                    )}
                     {tip > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400">Delivery Partner Tip</span>

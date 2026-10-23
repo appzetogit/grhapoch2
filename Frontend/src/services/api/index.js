@@ -1072,6 +1072,9 @@ export const adminAPI = {
     apiClient.get("/food/admin/fee-settings", { contextModule: "admin" }),
   getPublicFeeSettings: (config = {}) =>
     publicConfigGetOnce("/food/admin/fee-settings/public", config),
+  /** Donations report (admin) */
+  getDonations: (params = {}) =>
+    apiClient.get("/food/admin/donations", { params, contextModule: "admin" }),
   createOrUpdateFeeSettings: (body) =>
     apiClient.put("/food/admin/fee-settings", body ?? {}, {
       contextModule: "admin",
