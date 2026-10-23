@@ -30,6 +30,7 @@ const foodTransactionSchema = new mongoose.Schema({
         deliveryFee: { type: Number, default: 0, min: 0 },
         platformFee: { type: Number, default: 0, min: 0 },
         tip: { type: Number, default: 0, min: 0 },
+        donation: { type: Number, default: 0, min: 0 },
         restaurantCommission: { type: Number, default: 0, min: 0 },
         discount: { type: Number, default: 0, min: 0 },
         couponCode: { type: String, default: null, trim: true, uppercase: true },
@@ -65,6 +66,7 @@ const foodTransactionSchema = new mongoose.Schema({
         riderShare: { type: Number, required: true, min: 0 },
         // Customer tip passed through to the rider (not platform revenue).
         riderTip: { type: Number, default: 0, min: 0 },
+        donationAmount: { type: Number, default: 0, min: 0 },
         // Can be negative when discounts/rider pay exceed platform income; store the real value.
         platformNetProfit: { type: Number, required: true },
         taxAmount: { type: Number, default: 0, min: 0 },

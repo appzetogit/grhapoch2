@@ -45,6 +45,8 @@ const pricingSchema = new mongoose.Schema(
         platformFee: { type: Number, default: 0, min: 0 },
         // Optional customer tip; 100% goes to the delivery partner.
         tip: { type: Number, default: 0, min: 0 },
+        // Optional customer donation; goes to the platform (admin).
+        donation: { type: Number, default: 0, min: 0 },
         restaurantCommission: { type: Number, default: 0, min: 0 },
         discount: { type: Number, default: 0, min: 0 },
         couponCode: { type: String, default: null, trim: true, uppercase: true },

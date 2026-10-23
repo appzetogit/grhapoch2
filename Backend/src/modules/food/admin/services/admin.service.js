@@ -552,6 +552,11 @@ export async function getDashboardStats(query = {}) {
                             $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.platformFee', 0] }, 0] 
                         } 
                     },
+                    donationTotal: {
+                        $sum: {
+                            $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.donation', 0] }, 0]
+                        }
+                    },
                     deliveryFeeTotal: { 
                         $sum: { 
                             $cond: [{ $eq: ['$orderStatus', 'delivered'] }, { $ifNull: ['$pricing.deliveryFee', 0] }, 0] 
@@ -727,10 +732,11 @@ export async function getDashboardStats(query = {}) {
         revenue: { total: Number(totals.revenueTotal || 0) },
         commission: { total: Number(totals.commissionTotal || 0) },
         platformFee: { total: Number(totals.platformFeeTotal || 0) },
+        donation: { total: Number(totals.donationTotal || 0) },
         deliveryFee: { total: Number(totals.deliveryFeeTotal || 0) },
         gst: { total: Number(totals.gstTotal || 0) },
         totalAdminEarnings: Number(totals.adminNetProfit || 0) + Number(totals.gstTotal || 0),
-        deliveryProfit: Number(totals.adminNetProfit || 0) - Number(totals.commissionTotal || 0) - Number(totals.platformFeeTotal || 0),
+        deliveryProfit: Number(totals.adminNetProfit || 0) - Number(totals.commissionTotal || 0) - Number(totals.platformFeeTotal || 0) - Number(totals.donationTotal || 0),
         restaurants: {
             total: Number(restaurantsTotal || 0),
             pendingRequests: Number(restaurantsPending || 0)
@@ -868,6 +874,8 @@ export async function getTransactionReport(query = {}) {
             vatTax: tx.amounts?.taxAmount || pricing.tax || 0,
             deliveryCharge: pricing.deliveryFee || 0,
             platformFee,
+            tip: Number(pricing.tip || 0),
+            donation: Number(pricing.donation || 0),
             orderAmount: tx.amounts?.totalCustomerPaid || pricing.total || 0,
             status: tx.status
         };
@@ -2156,6 +2164,17 @@ export async function upsertFeeSettings(body) {
         if (body.gstRate === null) $unset.gstRate = 1;
         else if (body.gstRate !== undefined) $set.gstRate = body.gstRate;
 
+        if (body.donationEnabled !== undefined) $set.donationEnabled = body.donationEnabled;
+        if (body.donationAmounts !== undefined) {
+            $set.donationAmounts = body.donationAmounts;
+            // Presets supersede the legacy single amount.
+            $unset.donationAmount = 1;
+        }
+        if (body.donationAmounts !== undefined) {
+            // handled above
+        } else if (body.donationAmount === null) $unset.donationAmount = 1;
+        else if (body.donationAmount !== undefined) $set.donationAmount = body.donationAmount;
+
         if (body.isActive !== undefined) $set.isActive = body.isActive;
 
         const update = {};
@@ -2174,6 +2193,9 @@ export async function upsertFeeSettings(body) {
     if (body.deliveryFee !== undefined && body.deliveryFee !== null) payload.deliveryFee = body.deliveryFee;
     if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
+    if (body.donationEnabled !== undefined) payload.donationEnabled = body.donationEnabled;
+    if (body.donationAmount !== undefined && body.donationAmount !== null) payload.donationAmount = body.donationAmount;
+    if (body.donationAmounts !== undefined) payload.donationAmounts = body.donationAmounts;
 
     console.log('[DEBUG] Creating NEW settings with payload:', JSON.stringify(payload, null, 2));
     const created = await FoodFeeSettings.create(payload);

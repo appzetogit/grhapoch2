@@ -14,6 +14,7 @@ import { attachOutletTimingsToRestaurants } from '../../restaurant/services/outl
 import { getRestaurantAvailabilityStatus } from '../../restaurant/helpers/restaurantAvailability.helper.js';
 import { resolveOrderCartItems } from '../helpers/order-cart-items.helper.js';
 import { normalizeTipAmount } from '../helpers/tip.helper.js';
+import { resolveDonationAmount } from '../helpers/donation.helper.js';
 
 export async function loadRestaurantForOrdering(restaurantId) {
   if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) {
@@ -292,9 +293,11 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
 
   // Tip is untaxed and passes 100% to the rider. Whole rupees, capped.
   const tip = normalizeTipAmount(dto.tip);
+  // Donation is opt-in, untaxed, and goes to the platform (admin). Must be one of the admin-configured presets.
+  const donation = resolveDonationAmount(feeSettings, dto.donation);
 
   const total = round2(
-    Math.max(0, subtotal + packagingFee + deliveryFee + platformFee + tax + tip - discount),
+    Math.max(0, subtotal + packagingFee + deliveryFee + platformFee + tax + tip + donation - discount),
   );
 
   const priceChanges = (Array.isArray(dto.items) ? dto.items : [])
@@ -326,6 +329,7 @@ export async function calculateOrderPricing(userId, dto, options = {}) {
       deliveryFee,
       platformFee,
       tip,
+      donation,
       discount,
       total,
       currency: "INR",

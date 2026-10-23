@@ -19,6 +19,7 @@ const UserCarts = lazy(() => import("@food/pages/admin/orders/UserCarts"));
 const OrderDetectDelivery = lazy(() => import("@food/pages/admin/OrderDetectDelivery"));
 const Category = lazy(() => import("@food/pages/admin/categories/Category"));
 const FeeSettings = lazy(() => import("@food/pages/admin/fee-settings/FeeSettings"));
+const Donations = lazy(() => import("@food/pages/admin/donations/Donations"));
 const ReferralSettings = lazy(() => import("@food/pages/admin/referral-settings/ReferralSettings"));
 // Restaurant Management
 const RestaurantsList = lazy(() => import("@food/pages/admin/restaurant/RestaurantsList"));
@@ -294,6 +295,7 @@ export default function AdminRouter() {
             {/* FOOD & CATEGORY MANAGEMENT */}
             <Route path="categories" element={<Category />} />
             <Route path="fee-settings" element={<FeeSettings />} />
+            <Route path="donations" element={<Donations />} />
             <Route path="referral-settings" element={<ReferralSettings />} />
             <Route path="foods" element={<FoodsList />} />
             <Route path="food/list" element={<FoodsList />} />

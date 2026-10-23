@@ -1,3 +1,4 @@
+import { getDonationReport as getDonationReportService } from '../services/donation.service.js';
 import mongoose from 'mongoose';
 import * as adminService from '../services/admin.service.js';
 import * as featureSettingsService from '../services/featureSettings.service.js';
@@ -1689,6 +1690,16 @@ export async function updateFeatureSetting(req, res, next) {
             return res.status(404).json({ success: false, message: 'Feature not found' });
         }
         res.status(200).json({ success: true, message: 'Feature setting updated successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+// ----- Donations (admin) -----
+export async function getDonationReport(req, res, next) {
+    try {
+        const data = await getDonationReportService(req.query || {});
+        res.status(200).json({ success: true, message: 'Donations fetched successfully', data });
     } catch (error) {
         next(error);
     }
