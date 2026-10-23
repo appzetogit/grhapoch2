@@ -490,6 +490,18 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                     : <span className="text-slate-400">₹0.00</span>}
                 </span>
               </div>
+              {order.tip > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Delivery Partner Tip</span>
+                  <span className="font-medium text-slate-900">₹{Number(order.tip).toFixed(2)}</span>
+                </div>
+              )}
+              {order.donation > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Donation (to platform)</span>
+                  <span className="font-medium text-slate-900">₹{Number(order.donation).toFixed(2)}</span>
+                </div>
+              )}
               {order.vatTax !== undefined && order.vatTax > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Tax (GST)</span>

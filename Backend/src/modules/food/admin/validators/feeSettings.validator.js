@@ -14,6 +14,9 @@ const feeSettingsUpsertSchema = z.object({
     deliveryFeeRanges: z.array(rangeSchema).optional(),
     platformFee: z.number().min(0).nullable().optional(),
     gstRate: z.number().min(0).max(100).nullable().optional(),
+    donationEnabled: z.boolean().optional(),
+    donationAmount: z.number().min(0).max(1000).nullable().optional(),
+    donationAmounts: z.array(z.number().int().min(1).max(1000)).max(10).optional(),
     isActive: z.boolean().optional()
 });
 
@@ -38,12 +41,20 @@ export const validateFeeSettingsUpsertDto = (body) => {
             body?.platformFee === null ? null : body?.platformFee !== undefined ? Number(body.platformFee) : undefined,
         gstRate:
             body?.gstRate === null ? null : body?.gstRate !== undefined ? Number(body.gstRate) : undefined,
+        donationEnabled: body?.donationEnabled !== undefined ? Boolean(body.donationEnabled) : undefined,
+        donationAmounts: Array.isArray(body?.donationAmounts) ? body.donationAmounts.map((v) => Number(v)) : undefined,
+        donationAmount:
+            body?.donationAmount === null ? null : body?.donationAmount !== undefined ? Number(body.donationAmount) : undefined,
         isActive: body?.isActive !== undefined ? Boolean(body.isActive) : undefined
     };
 
     const result = feeSettingsUpsertSchema.safeParse(normalized);
     if (!result.success) {
         throw new ValidationError(result.error.errors[0].message);
+    }
+
+    if (Array.isArray(result.data.donationAmounts)) {
+        result.data.donationAmounts = [...new Set(result.data.donationAmounts)].sort((a, b) => a - b);
     }
 
     // Validate ranges: min < max, non-overlapping after sorting

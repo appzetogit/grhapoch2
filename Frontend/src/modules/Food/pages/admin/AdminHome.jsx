@@ -23,7 +23,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle } from "lucide-react"
+import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, HeartHandshake, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle } from "lucide-react"
 import { adminAPI } from "@food/api"
 const debugLog = () => {}
 const debugError = () => {}
@@ -119,6 +119,7 @@ export default function AdminHome() {
   const platformFeeTotal = dashboardData?.platformFee?.total || 0
   const deliveryFeeTotal = dashboardData?.deliveryFee?.total || 0
   const gstTotal = dashboardData?.gst?.total || 0
+  const donationTotal = dashboardData?.donation?.total || 0
   const totalAdminEarnings = dashboardData?.totalAdminEarnings || 0
 
   // Additional stats
@@ -150,6 +151,7 @@ export default function AdminHome() {
     `Platform: ${formatCurrency(platformFeeTotal)}`,
     `Delivery Net: ${formatCurrency(deliveryProfit)}`,
     `GST: ${formatCurrency(gstTotal)}`,
+    `Donations: ${formatCurrency(donationTotal)}`,
   ].join(" + ")
 
   return (
@@ -238,6 +240,14 @@ export default function AdminHome() {
               icon={<Receipt className="h-5 w-5 text-orange-600" />}
               accent="bg-orange-200/40"
               path="/admin/food/tax-report"
+            />
+            <MetricCard
+              title="Donations"
+              value={formatCurrency(donationTotal)}
+              helper={`Customer donations collected: ${periodLabel}`}
+              icon={<HeartHandshake className="h-5 w-5 text-rose-600" />}
+              accent="bg-rose-200/40"
+              path="/admin/food/donations"
             />
             <MetricCard
               title="Platform Total"
